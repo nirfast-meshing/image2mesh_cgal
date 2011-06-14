@@ -22,7 +22,7 @@ function varargout = image2mesh_gui(varargin)
 
 % Edit the above text to modify the response to help image2mesh_gui
 
-% Last Modified by GUIDE v2.5 13-Jun-2011 16:29:22
+% Last Modified by GUIDE v2.5 14-Jun-2011 09:33:33
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -275,7 +275,13 @@ UpdateInputFileInfo(hObject,eventdata,handles);
 function UpdateInputFileInfo(hObject,eventdata,handles)
 set(handles.infilename,'String',handles.inputfn);
 UpdateImageInformation(hObject,eventdata,handles);
+UpdateOutputFn(hObject,eventdata,handles);
 
+function UpdateOutputFn(hObject,eventdata,handles)
+s=get(handles.infilename,'String');
+s=remove_extension(s);
+s=add_extension(s,'.ele');
+set(handles.outputfn,'String',s)
 
 function UpdateImageInformation(hObject,eventdata,handles)
 [mask info] = GetImageStack(get(handles.infilename,'String'),[]);
@@ -308,7 +314,6 @@ function infilename_KeyPressFcn(hObject, eventdata, handles)
 %	Modifier: name(s) of the modifier key(s) (i.e., control, shift) pressed
 % handles    structure with handles and user data (see GUIDATA)
 if strcmp(eventdata.Key,'return')
-    handles.inputfn='hamid';
     guidata(hObject,handles);
     UpdateInputFileInfo(hObject,eventdata,handles);
 end
@@ -394,8 +399,59 @@ function pushbutton2_Callback(hObject, eventdata, handles)
 % handles    structure with handles and user data (see GUIDATA)
 
 
-% --- Executes on button press in pushbutton3.
-function pushbutton3_Callback(hObject, eventdata, handles)
-% hObject    handle to pushbutton3 (see GCBO)
+% --- Executes on button press in callimage2mesh_cgal.
+function callimage2mesh_cgal_Callback(hObject, eventdata, handles)
+% hObject    handle to callimage2mesh_cgal (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
+
+param.facet_angle = str2double(get(handles.facet_angle,'String'));
+param.facet_distance = str2double(get(handles.facet_distance,'String'));
+param.facet_size = str2double(get(handles.facet_size,'String'));
+param.medfilter = 0;
+param.pad = 0;
+param.cell_size = str2double(get(handles.cell_size,'String'));
+param.cell_radius_edge = str2double(get(handles.cell_radius_edge,'String'));
+param.special_subdomain_label = str2num(get(handles.specialregion_label,'String'));
+param.special_subdomain_size  = str2num(get(handles.specialregion_size, 'String'));
+s = get(handles.infilename,'String');
+[foo ext]=remove_extension(s);
+if ~strcmpi(ext,'.mha')
+    sx=str2double(get(handles.xpixel,'String'));
+    sy=str2double(get(handles.ypixel,'String'));
+    sz=str2double(get(handles.zpixel,'String'));
+    if isempty(sx) || isempty(sy) || isempty(sz) || ...
+            isnan(sx) || isnan(sy) || isnan(sz)
+        errordlg('Pixel size information is invalid!');
+        error('Pixel size information is invalid!');
+    end
+    param.xpixelsize = sx;
+    param.ypixelsize = sy;
+    param.zpixelsize = sz;
+end
+h=helpdlg('Please wait...','Mesh Generator Running!');
+image2mesh_cgal(s,param,get(handles.outputfn,'String'));
+if ishandle(h)
+    close(h);
+end
+
+function outputfn_Callback(hObject, eventdata, handles)
+% hObject    handle to outputfn (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hints: get(hObject,'String') returns contents of outputfn as text
+%        str2double(get(hObject,'String')) returns contents of outputfn as a double
+
+
+% --- Executes during object creation, after setting all properties.
+function outputfn_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to outputfn (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    empty - handles not created until after all CreateFcns called
+
+% Hint: edit controls usually have a white background on Windows.
+%       See ISPC and COMPUTER.
+if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
+    set(hObject,'BackgroundColor','white');
+end
