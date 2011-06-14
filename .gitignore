@@ -1,2 +1,6 @@
 *.o
 *~
+criteria.txt
+*.ele
+*.node
+*.mesh
