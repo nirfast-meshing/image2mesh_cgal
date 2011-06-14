@@ -40,7 +40,7 @@ if nargin==0
     param.medfilter = 1;
 end
 
-mask = GetImageStack(fn,param);
+[mask info] = GetImageStack(fn,param);
 
 [nrow ncol nslice] = size(mask);
 mask = uint8(mask);
@@ -58,11 +58,19 @@ for i=1:nslice
     end
     mask(:,:,i) = foo;
 end
-stackInfo.PixelSpacing(1) = param.xpixelsize;
-stackInfo.PixelSpacing(2) = param.ypixelsize;
-stackInfo.SliceThickness = param.zpixelsize;
 
-fn = remove_extension(fn);
+if isfield(info,'PixelDimensions')
+    stackInfo.PixelSpacing(1) = info.PixelDimensions(1);
+    stackInfo.PixelSpacing(2) = info.PixelDimensions(2);
+    stackInfo.SliceThickness  = info.PixelDimensions(3);
+elseif isfield(param,'xpixelsize')
+    stackInfo.PixelSpacing(1) = param.xpixelsize;
+    if isfield(param,'ypixelsize'), stackInfo.PixelSpacing(2) = param.ypixelsize; end
+    if isfield(param,'zpixelsize'), stackInfo.SliceThickness  = param.zpixelsize; end
+else
+    error('No pixel dimension information is provided');
+end
+
 savefn = add_extension(fn,'.inr');
 saveinr(mask,savefn,stackInfo);
 
@@ -101,6 +109,9 @@ eval(makemeshcommand);
 
 % Read the resulting mesh
 [e p] = readMEDIT(tmpmeshfn);
+if isfield(info,'Offset')
+    p = p + repmat(info.Offset,size(p,1),1);
+end
 if nargin<3
     outfn=[fn '-tetmesh'];
 end
