@@ -8,7 +8,19 @@ function [e p] = image2mesh_cgal(fn,param,outfn)
 % param.xpixelsize = x pixel size
 % param.ypixelsize = y pixel size
 % param.zpixelsize = z pixel size
-%
+% 
+% subdomain label (defined above)
+% param.facet_angle = minimum angle of triangles on surface of mesh (25)
+% param.facet_size = controls size of triangles on surface of mesh
+% param.facet_distance = controls how accurate the surface mesh mimics the
+%                        actual model
+% param.cell_radius_edge = controls the quality of tetrahedrons
+% param.cell_size = controls the general size of tetrahedrons
+% 
+% param.special_subdomain_label = label ID (grayscale value) of subdomain
+%                    that user wants to have a different tetrahedron size
+% param.special_subdomain_size = size of tetrahedron for the special
+% 
 % outfn: (optional) specifies the prefix for .ele/.node that the resulting
 %        mesh will be written into
 
@@ -52,11 +64,20 @@ fn = remove_extension(fn);
 savefn = add_extension(fn,'.inr');
 saveinr(mask,savefn,stackInfo);
 
-% Write the meshing parameters file
+% Set up the necessary parameters for meshing
 facet_angle = 25; facet_size = 3; facet_distance = 2;
 cell_radius_edge = 3; cell_size = 3; % general tet size of all regions
 special_subdomain_label = 0; % label of region to be refined
 special_size = 0; % tet size of the region 'special_subdomain_label'
+if isfield(param,'facet_angle'), facet_angle = param.facet_angle; end
+if isfield(param,'facet_size'),  facet_size  = param.facet_size; end
+if isfield(param,'facet_distance'), facet_distance = param.facet_distance; end
+if isfield(param,'cell_radius_edge'), cell_radius_edge = param.cell_radius_edge; end
+if isfield(param,'cell_size'), cell_size = param.cell_size; end
+if isfield(param,'special_subdomain_label'), special_subdomain_label = param.special_subdomain_label; end
+if isfield(param,'special_size'), special_size = param.special_size; end
+
+% Write up the parameter files
 cgalparam_fn = [pwd filesep 'criteria.txt'];
 fid = fopen(cgalparam_fn,'wt');
 fprintf(fid,'%f\n',facet_angle);
@@ -76,7 +97,7 @@ end
 makemeshcommand = ['! "' syscommand '" ' savefn ' ' cgalparam_fn ' ' tmpmeshfn];
 eval(makemeshcommand);
 
-
+% Read the resulting mesh
 [e p] = readMEDIT(tmpmeshfn);
 if nargin<3
     outfn=[fn '-tetmesh'];
@@ -86,3 +107,4 @@ writenodelm_nod_elm(outfn,e,p,[],1);
 warning('off','MATLAB:DELETE:FileNotFound');
 delete(cgalparam_fn,tmpmeshfn);
 warning('on','MATLAB:DELETE:FileNotFound');
+
