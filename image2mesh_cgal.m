@@ -57,7 +57,7 @@ facet_angle = 25; facet_size = 3; facet_distance = 2;
 cell_radius_edge = 3; cell_size = 3; % general tet size of all regions
 special_subdomain_label = 0; % label of region to be refined
 special_size = 0; % tet size of the region 'special_subdomain_label'
-cgalparam_fn = 'criteria.txt';
+cgalparam_fn = [pwd filesep 'criteria.txt'];
 fid = fopen(cgalparam_fn,'wt');
 fprintf(fid,'%f\n',facet_angle);
 fprintf(fid,'%f\n',facet_size);
@@ -76,10 +76,13 @@ end
 makemeshcommand = ['! "' syscommand '" ' savefn ' ' cgalparam_fn ' ' tmpmeshfn];
 eval(makemeshcommand);
 
+
 [e p] = readMEDIT(tmpmeshfn);
 if nargin<3
     outfn=[fn '-tetmesh'];
 end
 outfn = add_extension(outfn,'.ele');
 writenodelm_nod_elm(outfn,e,p,[],1);
-
+warning('off','MATLAB:DELETE:FileNotFound');
+delete(cgalparam_fn,tmpmeshfn);
+warning('on','MATLAB:DELETE:FileNotFound');
