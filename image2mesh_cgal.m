@@ -1,12 +1,16 @@
 function [e p] = image2mesh_cgal(fn,param,outfn)
 % Tries to read stack of 2D images (with file name 'fn') and create a
-% tetrahedral mesh using CGAL library.
+% tetrahedral mesh using CGAL library. It returns the mesh in 'e' and 'p',
+% tetrahedral elements and node coordinates.
 % 
 % param.pad : add padding to 4 sides of each 2D image
 % param.medfilter : apply a median filter to iron out speckle noises of images
 % param.xpixelsize = x pixel size
 % param.ypixelsize = y pixel size
 % param.zpixelsize = z pixel size
+%
+% outfn: (optional) specifies the prefix for .ele/.node that the resulting
+%        mesh will be written into
 
 if nargin==0
     [fn, pathname] = uigetfile( ...
