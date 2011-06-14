@@ -5,16 +5,16 @@ OS32_64 =
 # Required libraries
 
 # Location where CGAL shared libraries can be found for linking
-CGALHEADER = $(HOME)/local/CGAL/3.8/include
+CGALHEADER = $(HOME)/local/CGAL/3.8-gcc4.2.1/include
 BOOSTHEADER = /usr/local/include
 INCHEAD = -I$(CGALHEADER) -I$(BOOSTHEADER)
 
 # Location where CGAL shared libraries can be found for linking
-CGALLIBS=$(HOME)/local/CGAL/3.8/lib
+CGALLIBS=$(HOME)/local/CGAL/3.8-gcc4.2.1/lib
 GMPLIBS=/usr/local/lib
 BOOSTLIBS=/usr/local/lib
 LIBPTHREAD=
-MACSDK=-isysroot /Developer/SDKs/MacOSX10.5.sdk -mmacosx-version-min=10.5
+MACSDK=-isysroot /Developer/SDKs/MacOSX10.6.sdk -mmacosx-version-min=10.6
 #MACSDK=
 
 # Paths to CGAL and boost headers
