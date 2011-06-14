@@ -1,0 +1,48 @@
+#CXX=g++-4.2
+#CC=gcc-4.2
+
+OS32_64 = 
+# Required libraries
+
+# Location where CGAL shared libraries can be found for linking
+CGALHEADER = $(HOME)/local2/CGAL/3.8/include
+BOOSTHEADER = $(HOME)/local2/include
+INCHEAD = -I$(CGALHEADER) -I$(BOOSTHEADER)
+
+# Location where CGAL shared libraries can be found for linking
+CGALLIBS=$(HOME)/local2/CGAL/3.8/lib
+GMPLIBS=$(HOME)/local2/lib
+BOOSTLIBS=$(HOME)/local2/lib
+LIBPTHREAD=
+MACSDK=-isysroot /Developer/SDKs/MacOSX10.6.sdk -mmacosx-version-min=10.6
+#MACSDK=
+
+# Paths to CGAL and boost headers
+#LDFLAGS=-lCGAL -lgmp -lmpfr -lboost_thread
+LDFLAGS=$(MACSDK) $(CGALLIBS)/libCGAL.a $(CGALLIBS)/libCGAL_ImageIO.a \
+	$(GMPLIBS)/libmpfr.a $(GMPLIBS)/libgmp.a \
+	$(BOOSTLIBS)/libboost_thread.a $(LIBPTHREAD) \
+	-framework OpenGL -lz
+
+# Necessary compiler flags (g++)
+CXXFLAGS=$(MACSDK) -Wall -fno-common -O3 \
+	-frounding-math -fno-strict-aliasing
+
+#rpath setting (this helps the final executable to easily locate
+# required libraries)
+RPATHSETTING = -Wl,-rpath,@executable_path/../lib$(OS32_64)/darwin/ 
+RPATHSETTING += -Wl,-rpath,@loader_path/
+RPATHSETTING = 
+
+
+
+CXXFLAGS += $(INCHEAD)
+mac: image2mesh_cgal.o
+	$(CXX) image2mesh_cgal.o -o image2mesh_cgal-mac32.exe \
+	       -L$(CGALLIBS) -Wl,-search_paths_first \
+	       $(LDFLAGS) $(RPATHSETTING)
+clean:
+	rm image2mesh_cgal-mac32.exe image2mesh_cgal.o	
+	
+.cpp$(OBJ_EXT):
+	$(CXX) $(CXXFLAGS) $<
