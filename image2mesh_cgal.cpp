@@ -25,11 +25,14 @@ typedef CGAL::Mesh_constant_domain_field_3<Mesh_domain::R,
 // To avoid verbose function and named parameters call
 using namespace CGAL::parameters;
 
+// Usage: image2mesh_cgal inputstack.inr criteria.txt
+// criterial.txt is a text file containing setting for mesh sizes and refirement options.
+
 int main(int argc, char *argv[])
 {
 	// Loads image
 	CGAL::Image_3 image;
-	std::string cfn, inrfn;
+	std::string cfn, inrfn, outfn;
 	double facet_angle=25, facet_size=2, facet_distance=1.5,
 	       cell_radius_edge=2, general_cell_size=2;
 	double special_size = 0.9; // Cell size to be used in subdomains of image with 'special_subdomain_label'
@@ -48,7 +51,7 @@ int main(int argc, char *argv[])
 		inrfn = argv[1];
 		defulatcriteria = true;
 	}
-	else if (argc == 3) {
+	else if (argc >= 3) {
 		inrfn = argv[1];
 		cfn = argv[2];
 	}
@@ -73,7 +76,11 @@ int main(int argc, char *argv[])
 					 special_subdomain_label << std::endl <<
 					special_size << std::endl;
 	}
-	
+	if (argc >= 4)
+		outfn = argv[3];
+	else
+		outfn = "_tmp_image2mesh_cgal.mesh";
+		
 	image.read(inrfn.c_str());
 
 	// Domain
@@ -96,7 +103,7 @@ int main(int argc, char *argv[])
 	C3t3 c3t3 = CGAL::make_mesh_3<C3t3>(domain, criteria);
 
 	// Output
-	std::ofstream medit_file("out.mesh");
+	std::ofstream medit_file(outfn.c_str());
 	c3t3.output_to_medit(medit_file);
 
 	return 0;

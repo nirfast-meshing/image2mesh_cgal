@@ -37,12 +37,12 @@ RPATHSETTING =
 
 
 CXXFLAGS += $(INCHEAD)
-mac: mesh_3D_image_variable_size.o
-	$(CXX) mesh_3D_image_variable_size.o -o mesh_3D_image_variable_size-mac64.exe \
+mac: image2mesh_cgal.o
+	$(CXX) image2mesh_cgal.o -o image2mesh_cgal-mac64.exe \
 	       -L$(CGALLIBS) -Wl,-search_paths_first \
 	       $(LDFLAGS) $(RPATHSETTING)
 clean:
-	rm mesh_3D_image_variable_size-mac64.exe mesh_3D_image_variable_size.o	
+	rm image2mesh_cgal-mac64.exe image2mesh_cgal.o	
 	
 .cpp$(OBJ_EXT):
 	$(CXX) $(CXXFLAGS) $<
