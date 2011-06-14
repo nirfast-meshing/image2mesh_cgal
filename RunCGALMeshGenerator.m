@@ -5,8 +5,16 @@ function [e p] = RunCGALMeshGenerator(mask,param)
 % Written by:
 %   Hamid Ghadyani May 2011
 
-tmpmeshfn = '._out.mesh';
-tmpinrfn  = '._cgal_mesher.inr';
+if ~isfield(param,'tmppath')
+    tmppath=pwd;
+else
+    tmppath=param.tmppath;
+end
+
+tmpmeshfn = [tmppath filesep '._out.mesh'];
+tmpinrfn  = [tmppath filesep '._cgal_mesher.inr'];
+cgalparam_fn = [tmppath filesep '._criteria.txt'];
+
 savefn = add_extension(tmpinrfn,'.inr');
 saveinr(mask,savefn,param);
 
@@ -24,7 +32,6 @@ if isfield(param,'special_subdomain_label'), special_subdomain_label = param.spe
 if isfield(param,'special_size'), special_size = param.special_size; end
 
 % Write up the parameter files
-cgalparam_fn = [pwd filesep 'criteria.txt'];
 fid = fopen(cgalparam_fn,'wt');
 fprintf(fid,'%f\n',facet_angle);
 fprintf(fid,'%f\n',facet_size);

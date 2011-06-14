@@ -443,6 +443,11 @@ param.PixelDimensions(3) = sz;
 param.PixelSpacing(1) = sx;
 param.PixelSpacing(2) = sy;
 param.SliceThickness  = sz;
+foo = userpath;
+if ~isalpha_num(foo(end))
+    foo(end)=[];
+end
+param.tmppath=foo;
 
 h=helpdlg('Please wait...','Mesh Generator Running!');
 [e p] = RunCGALMeshGenerator(handles.mask,param);
