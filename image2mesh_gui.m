@@ -22,7 +22,7 @@ function varargout = image2mesh_gui(varargin)
 
 % Edit the above text to modify the response to help image2mesh_gui
 
-% Last Modified by GUIDE v2.5 13-Jun-2011 13:22:39
+% Last Modified by GUIDE v2.5 13-Jun-2011 16:29:22
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -260,5 +260,142 @@ end
 % --- Executes on button press in browsebutton.
 function browsebutton_Callback(hObject, eventdata, handles)
 % hObject    handle to browsebutton (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+[fn, pathname] = uigetfile( ...
+    {'*.bmp;*.jpg;*.tif;*.gif;*.mha','Image Files (*.bmp,*.jpg,*.tif,*.gif,*.mha)';'*.*','All Files (*.*)'}, ...
+   'Pick a file');
+if isequal(fn,0)
+    error('\nYou need to select an image file!');
+end
+handles.inputfn = fullfile(pathname,fn);
+guidata(hObject,handles);
+UpdateInputFileInfo(hObject,eventdata,handles);
+
+function UpdateInputFileInfo(hObject,eventdata,handles)
+set(handles.infilename,'String',handles.inputfn);
+UpdateImageInformation(hObject,eventdata,handles);
+
+
+function UpdateImageInformation(hObject,eventdata,handles)
+[mask info] = GetImageStack(get(handles.infilename,'String'),[]);
+regions = unique(mask(:));
+if ~isempty(info)
+    s{1} = sprintf('Rows: %d, Cols: %d, Slices: %d',info.Dimensions(1), ...
+        info.Dimensions(2), info.Dimensions(3));
+    if isfield(info,'PixelDimensions')
+        set(handles.xpixel,'String',num2str(info.PixelDimensions(1)));
+        set(handles.ypixel,'String',num2str(info.PixelDimensions(2)));
+        set(handles.zpixel,'String',num2str(info.PixelDimensions(3)));
+        s{2} = sprintf('Offset: [%.1f %.1f %.1f]',info.Offset(1),info.Offset(2),info.Offset(3));
+    else
+    end
+    set(handles.imageinfotxt,'String',s);
+end
+s={};
+s{1} = sprintf('Region IDs (%d total):',length(regions));
+fmt = ['%d,' repmat(' %d,',1,length(regions)-1)];
+s{2} = sprintf(fmt,regions);
+set(handles.specialregiontxt,'String',s);
+
+
+% --- Executes on key press with focus on infilename and none of its controls.
+function infilename_KeyPressFcn(hObject, eventdata, handles)
+% hObject    handle to infilename (see GCBO)
+% eventdata  structure with the following fields (see UICONTROL)
+%	Key: name of the key that was pressed, in lower case
+%	Character: character interpretation of the key(s) that was pressed
+%	Modifier: name(s) of the modifier key(s) (i.e., control, shift) pressed
+% handles    structure with handles and user data (see GUIDATA)
+if strcmp(eventdata.Key,'return')
+    handles.inputfn='hamid';
+    guidata(hObject,handles);
+    UpdateInputFileInfo(hObject,eventdata,handles);
+end
+
+
+
+
+
+
+
+function xpixel_Callback(hObject, eventdata, handles)
+% hObject    handle to xpixel (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hints: get(hObject,'String') returns contents of xpixel as text
+%        str2double(get(hObject,'String')) returns contents of xpixel as a double
+
+
+% --- Executes during object creation, after setting all properties.
+function xpixel_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to xpixel (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    empty - handles not created until after all CreateFcns called
+
+% Hint: edit controls usually have a white background on Windows.
+%       See ISPC and COMPUTER.
+if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
+    set(hObject,'BackgroundColor','white');
+end
+
+
+
+function ypixel_Callback(hObject, eventdata, handles)
+% hObject    handle to ypixel (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hints: get(hObject,'String') returns contents of ypixel as text
+%        str2double(get(hObject,'String')) returns contents of ypixel as a double
+
+
+% --- Executes during object creation, after setting all properties.
+function ypixel_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to ypixel (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    empty - handles not created until after all CreateFcns called
+
+% Hint: edit controls usually have a white background on Windows.
+%       See ISPC and COMPUTER.
+if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
+    set(hObject,'BackgroundColor','white');
+end
+
+
+
+function zpixel_Callback(hObject, eventdata, handles)
+% hObject    handle to zpixel (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hints: get(hObject,'String') returns contents of zpixel as text
+%        str2double(get(hObject,'String')) returns contents of zpixel as a double
+
+
+% --- Executes during object creation, after setting all properties.
+function zpixel_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to zpixel (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    empty - handles not created until after all CreateFcns called
+
+% Hint: edit controls usually have a white background on Windows.
+%       See ISPC and COMPUTER.
+if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
+    set(hObject,'BackgroundColor','white');
+end
+
+
+% --- Executes on button press in pushbutton2.
+function pushbutton2_Callback(hObject, eventdata, handles)
+% hObject    handle to pushbutton2 (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+
+% --- Executes on button press in pushbutton3.
+function pushbutton3_Callback(hObject, eventdata, handles)
+% hObject    handle to pushbutton3 (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
