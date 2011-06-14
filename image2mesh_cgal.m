@@ -26,7 +26,7 @@ function [e p] = image2mesh_cgal(fn,param,outfn)
 
 if nargin==0
     [fn, pathname] = uigetfile( ...
-    {'*.bmp;*.jpg;*.tif;*.gif','Image Files';
+    {'*.bmp;*.jpg;*.tif;*.gif;*.mha','Image Files';
    '*.*',  'All Files (*.*)'}, ...
    'Pick a file');
     if isequal(fn,0)
@@ -51,6 +51,8 @@ if isfield(param,'medfilter') && param.medfilter==1
 end
 for i=1:nslice
     foo = mask(:,:,i);
+%     foo(foo==198)=50;
+%     foo(foo==199)=200;
     if medfilter == 1
         foo = medfilt2(foo,[5 5]);
     end
