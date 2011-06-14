@@ -22,7 +22,7 @@ function varargout = image2mesh_gui(varargin)
 
 % Edit the above text to modify the response to help image2mesh_gui
 
-% Last Modified by GUIDE v2.5 14-Jun-2011 09:33:33
+% Last Modified by GUIDE v2.5 14-Jun-2011 12:06:18
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -286,15 +286,24 @@ set(handles.outputfn,'String',s)
 function UpdateImageInformation(hObject,eventdata,handles)
 [mask info] = GetImageStack(get(handles.infilename,'String'),[]);
 regions = unique(mask(:));
+s={};
 if ~isempty(info)
-    s{1} = sprintf('Rows: %d, Cols: %d, Slices: %d',info.Dimensions(1), ...
+    s{1} = 'Info from file header:';
+    s{2} = sprintf('Rows: %d, Cols: %d, Slices: %d',info.Dimensions(1), ...
         info.Dimensions(2), info.Dimensions(3));
     if isfield(info,'PixelDimensions')
         set(handles.xpixel,'String',num2str(info.PixelDimensions(1)));
         set(handles.ypixel,'String',num2str(info.PixelDimensions(2)));
         set(handles.zpixel,'String',num2str(info.PixelDimensions(3)));
-        s{2} = sprintf('Offset: [%.1f %.1f %.1f]',info.Offset(1),info.Offset(2),info.Offset(3));
-    else
+        s{end+1} = sprintf('Pixel size: [%.3f %.3f %.3f]',info.PixelDimensions);
+    end
+    if isfield(info,'Dimensions')
+        set(handles.nrows,  'String',num2str(info.Dimensions(1)));
+        set(handles.ncols,  'String',num2str(info.Dimensions(2)));
+        set(handles.nslices,'String',num2str(info.Dimensions(3)));
+    end
+    if isfield(info,'Offset')
+        s{end+1} = sprintf('Offset: [%.2f %.2f %.2f]',info.Offset);
     end
     set(handles.imageinfotxt,'String',s);
 end
@@ -303,7 +312,10 @@ s{1} = sprintf('Region IDs (%d total):',length(regions));
 fmt = ['%d,' repmat(' %d,',1,length(regions)-1)];
 s{2} = sprintf(fmt,regions);
 set(handles.specialregiontxt,'String',s);
-
+handles.mask = uint8(mask);
+guidata(hObject,handles);
+handles.maskinfo = info;
+guidata(hObject,handles);
 
 % --- Executes on key press with focus on infilename and none of its controls.
 function infilename_KeyPressFcn(hObject, eventdata, handles)
@@ -314,6 +326,7 @@ function infilename_KeyPressFcn(hObject, eventdata, handles)
 %	Modifier: name(s) of the modifier key(s) (i.e., control, shift) pressed
 % handles    structure with handles and user data (see GUIDATA)
 if strcmp(eventdata.Key,'return')
+    handles.inputfn = get(handles.infilename,'String');
     guidata(hObject,handles);
     UpdateInputFileInfo(hObject,eventdata,handles);
 end
@@ -404,7 +417,7 @@ function callimage2mesh_cgal_Callback(hObject, eventdata, handles)
 % hObject    handle to callimage2mesh_cgal (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
-
+param = handles.maskinfo;
 param.facet_angle = str2double(get(handles.facet_angle,'String'));
 param.facet_distance = str2double(get(handles.facet_distance,'String'));
 param.facet_size = str2double(get(handles.facet_size,'String'));
@@ -414,26 +427,30 @@ param.cell_size = str2double(get(handles.cell_size,'String'));
 param.cell_radius_edge = str2double(get(handles.cell_radius_edge,'String'));
 param.special_subdomain_label = str2num(get(handles.specialregion_label,'String'));
 param.special_subdomain_size  = str2num(get(handles.specialregion_size, 'String'));
-s = get(handles.infilename,'String');
-[foo ext]=remove_extension(s);
-if ~strcmpi(ext,'.mha')
-    sx=str2double(get(handles.xpixel,'String'));
-    sy=str2double(get(handles.ypixel,'String'));
-    sz=str2double(get(handles.zpixel,'String'));
-    if isempty(sx) || isempty(sy) || isempty(sz) || ...
-            isnan(sx) || isnan(sy) || isnan(sz)
-        errordlg('Pixel size information is invalid!');
-        error('Pixel size information is invalid!');
-    end
-    param.xpixelsize = sx;
-    param.ypixelsize = sy;
-    param.zpixelsize = sz;
+
+sx=str2double(get(handles.xpixel,'String'));
+sy=str2double(get(handles.ypixel,'String'));
+sz=str2double(get(handles.zpixel,'String'));
+if isempty(sx) || isempty(sy) || isempty(sz) || ...
+        isnan(sx) || isnan(sy) || isnan(sz)
+    errordlg('Pixel size information is invalid!');
+    error('Pixel size information is invalid!');
 end
+
+param.PixelDimensions(1) = sx;
+param.PixelDimensions(2) = sy;
+param.PixelDimensions(3) = sz;
+param.PixelSpacing(1) = sx;
+param.PixelSpacing(2) = sy;
+param.SliceThickness  = sz;
+
 h=helpdlg('Please wait...','Mesh Generator Running!');
-image2mesh_cgal(s,param,get(handles.outputfn,'String'));
+[e p] = RunCGALMeshGenerator(handles.mask,param);
 if ishandle(h)
     close(h);
 end
+outfn = get(handles.outputfn,'String');
+writenodelm_nod_elm(outfn,e,p,[],1);
 
 function outputfn_Callback(hObject, eventdata, handles)
 % hObject    handle to outputfn (see GCBO)
@@ -447,6 +464,75 @@ function outputfn_Callback(hObject, eventdata, handles)
 % --- Executes during object creation, after setting all properties.
 function outputfn_CreateFcn(hObject, eventdata, handles)
 % hObject    handle to outputfn (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    empty - handles not created until after all CreateFcns called
+
+% Hint: edit controls usually have a white background on Windows.
+%       See ISPC and COMPUTER.
+if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
+    set(hObject,'BackgroundColor','white');
+end
+
+
+
+function nrows_Callback(hObject, eventdata, handles)
+% hObject    handle to nrows (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hints: get(hObject,'String') returns contents of nrows as text
+%        str2double(get(hObject,'String')) returns contents of nrows as a double
+
+
+% --- Executes during object creation, after setting all properties.
+function nrows_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to nrows (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    empty - handles not created until after all CreateFcns called
+
+% Hint: edit controls usually have a white background on Windows.
+%       See ISPC and COMPUTER.
+if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
+    set(hObject,'BackgroundColor','white');
+end
+
+
+
+function ncols_Callback(hObject, eventdata, handles)
+% hObject    handle to ncols (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hints: get(hObject,'String') returns contents of ncols as text
+%        str2double(get(hObject,'String')) returns contents of ncols as a double
+
+
+% --- Executes during object creation, after setting all properties.
+function ncols_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to ncols (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    empty - handles not created until after all CreateFcns called
+
+% Hint: edit controls usually have a white background on Windows.
+%       See ISPC and COMPUTER.
+if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
+    set(hObject,'BackgroundColor','white');
+end
+
+
+
+function nslices_Callback(hObject, eventdata, handles)
+% hObject    handle to nslices (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hints: get(hObject,'String') returns contents of nslices as text
+%        str2double(get(hObject,'String')) returns contents of nslices as a double
+
+
+% --- Executes during object creation, after setting all properties.
+function nslices_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to nslices (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    empty - handles not created until after all CreateFcns called
 
