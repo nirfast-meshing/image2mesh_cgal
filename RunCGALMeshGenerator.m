@@ -47,7 +47,7 @@ syscommand = GetSystemCommand('image2mesh_cgal');
 if ~ispc
     eval(['! chmod u+x "' syscommand '"']);
 end
-makemeshcommand = ['! "' syscommand '" ' savefn ' ' cgalparam_fn ' ' tmpmeshfn];
+makemeshcommand = ['! "' syscommand '" "' savefn '" "' cgalparam_fn '" "' tmpmeshfn '"'];
 eval(makemeshcommand);
 
 % Read the resulting mesh
