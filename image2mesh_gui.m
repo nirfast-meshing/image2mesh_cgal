@@ -690,6 +690,7 @@ function UpdateSDFileInfo(hObject,eventdata,handles)
 set(handles.sdfilename,'ForegroundColor',[0 0 0]);
 handles.sdcoords = textread(get(handles.sdfilename,'String'));
 s = get(handles.imageinfotxt,'String');
+s{end+1}='';
 s{end+1} = sprintf('Number of source/detectors: %d',size(handles.sdcoords,1));
 set(handles.imageinfotxt,'String',s);
 guidata(hObject,handles);
