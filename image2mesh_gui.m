@@ -694,7 +694,9 @@ end
 
 function UpdateSDFileInfo(hObject,eventdata,handles)
 set(handles.sdfilename,'ForegroundColor',[0 0 0]);
-handles.sdcoords = textread(get(handles.sdfilename,'String'));
+fid=fopen(get(handles.sdfilename,'String'),'rt');
+s=textscan(fid,'%f,%f,%f,%f');
+handles.sdcoords = [s{2} s{3} s{4}];
 s = get(handles.imageinfotxt,'String');
 s{end+1}='';
 s{end+1} = sprintf('Number of source/detectors: %d',size(handles.sdcoords,1));
