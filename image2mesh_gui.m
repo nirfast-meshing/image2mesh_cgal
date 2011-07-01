@@ -502,9 +502,13 @@ h=gui_place_sources_detectors('mesh',[f1 filesep f2 '_nirfast_mesh']);
 data=guidata(h);
 
 if ~isempty(handles.sdcoords)
-    sdcoords = handles.sdcoords;
-    set(data.sources,  'String',cellstr(num2str(sdcoords,'%.8f %.8f %.8f')));
-    set(data.detectors,'String',cellstr(num2str(sdcoords,'%.8f %.8f %.8f')));
+    handles.sdcoords = handles.sdcoords + repmat(param.Offset,size(handles.sdcoords,1),1);
+    guidata(hObject,handles);
+    set(data.sources,  'String',cellstr(num2str(handles.sdcoords,'%.8f %.8f %.8f')));
+    set(data.detectors,'String',cellstr(num2str(handles.sdcoords,'%.8f %.8f %.8f')));
+    axes(data.mesh)
+    plot3(handles.sdcoords(1),handles.sdcoords(2),handles.sdcoords(3),'ro');
+    plot3(handles.sdcoords(1),handles.sdcoords(2),handles.sdcoords(3),'bx');
 end
 
 function outputfn_Callback(hObject, eventdata, handles)
@@ -702,3 +706,5 @@ s{end+1}='';
 s{end+1} = sprintf('Number of source/detectors: %d',size(handles.sdcoords,1));
 set(handles.imageinfotxt,'String',s);
 guidata(hObject,handles);
+
+
