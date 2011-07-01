@@ -293,6 +293,8 @@ if flag
     else
         set(handles.sdfilename,'String','Could not find S/D file!');
         set(handles.sdfilename,'ForegroundColor',[1 0 0]);
+        handles.sdcoords=[];
+        guidata(hObject,handles);
     end
 end
 
@@ -439,6 +441,7 @@ function callimage2mesh_cgal_Callback(hObject, eventdata, handles)
 % hObject    handle to callimage2mesh_cgal (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
+handles = guidata(hObject);
 param = handles.maskinfo;
 param.facet_angle = str2double(get(handles.facet_angle,'String'));
 param.facet_distance = str2double(get(handles.facet_distance,'String'));
@@ -497,9 +500,12 @@ set(handles.statustext,'ForegroundColor',tmp2);
 
 h=gui_place_sources_detectors('mesh',[f1 filesep f2 '_nirfast_mesh']);
 data=guidata(h);
-sdcoords = handles.sdcoords;
-set(data.sources,  'String',cellstr(num2str(sdcoords,'%.8f %.8f %.8f')));
-set(data.detectors,'String',cellstr(num2str(sdcoords,'%.8f %.8f %.8f')));
+
+if ~isempty(handles.sdcoords)
+    sdcoords = handles.sdcoords;
+    set(data.sources,  'String',cellstr(num2str(sdcoords,'%.8f %.8f %.8f')));
+    set(data.detectors,'String',cellstr(num2str(sdcoords,'%.8f %.8f %.8f')));
+end
 
 function outputfn_Callback(hObject, eventdata, handles)
 % hObject    handle to outputfn (see GCBO)
