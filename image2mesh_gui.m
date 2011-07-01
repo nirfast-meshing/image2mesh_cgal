@@ -22,7 +22,7 @@ function varargout = image2mesh_gui(varargin)
 
 % Edit the above text to modify the response to help image2mesh_gui
 
-% Last Modified by GUIDE v2.5 14-Jun-2011 12:06:18
+% Last Modified by GUIDE v2.5 30-Jun-2011 23:43:46
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -256,7 +256,6 @@ if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgr
     set(hObject,'BackgroundColor','white');
 end
 
-
 % --- Executes on button press in browsebutton.
 function browsebutton_Callback(hObject, eventdata, handles)
 % hObject    handle to browsebutton (see GCBO)
@@ -266,16 +265,39 @@ function browsebutton_Callback(hObject, eventdata, handles)
     {'*.bmp;*.jpg;*.tif;*.gif;*.mha','Image Files (*.bmp,*.jpg,*.tif,*.gif,*.mha)';'*.*','All Files (*.*)'}, ...
    'Pick a file');
 if isequal(fn,0)
-    error('\nYou need to select an image file!');
+    error('You need to select an image file!');
 end
 handles.inputfn = fullfile(pathname,fn);
 guidata(hObject,handles);
 UpdateInputFileInfo(hObject,eventdata,handles);
 
 function UpdateInputFileInfo(hObject,eventdata,handles)
+flag=false;
+if ~strcmp(handles.inputfn,get(handles.infilename,'String'))
+    flag=true;
+end
 set(handles.infilename,'String',handles.inputfn);
+tmp = get(handles.statustext,'String');
+set(handles.statustext,'String',{'Status:';'';'Loading Image';'Please wait...'});
 UpdateImageInformation(hObject,eventdata,handles);
+handles = guidata(hObject);
 UpdateOutputFn(hObject,eventdata,handles);
+if flag
+    [f1 f2 f3] = fileparts(get(handles.infilename,'String'));
+    if exist(fullfile(f1,[f2 '.txt']),'file')
+        set(handles.sdfilename,'String',fullfile(f1,[f2 '.txt']));
+        UpdateSDFileInfo(hObject,eventdata,handles);
+    elseif exist(fullfile(f1,[f2 '.csv']),'file')
+        set(handles.sdfilename,'String',fullfile(f1,[f2 '.csv']));
+        UpdateSDFileInfo(hObject,eventdata,handles);
+    else
+        set(handles.sdfilename,'String','Could not find S/D file!');
+        set(handles.sdfilename,'ForegroundColor',[1 0 0]);
+    end
+end
+
+set(handles.statustext,'String',tmp);
+
 
 function UpdateOutputFn(hObject,eventdata,handles)
 s=get(handles.infilename,'String');
@@ -452,12 +474,32 @@ end
 
 
 h=helpdlg('Please wait...','Mesh Generator Running!');
+tmp1 = get(handles.statustext,'String');
+tmp2 = get(handles.statustext,'ForegroundColor');
+set(handles.statustext,'String',{'Status:';'';'Creating Mesh';'Please wait...'});
+set(handles.statustext,'ForegroundColor',[1 0 0]);
+
 [e p] = RunCGALMeshGenerator(handles.mask,param);
+
+outfn = get(handles.outputfn,'String');
+writenodelm_nod_elm(outfn,e,p,[],1);
+
+% call conversion to nirfast mesh
+[f1 f2] = fileparts(outfn);
+handles=guidata(hObject);
+nodelm2nirfast(outfn,[f1 filesep f2 '_nirfast_mesh'],handles.meshtype);
+
 if ishandle(h)
     close(h);
 end
-outfn = get(handles.outputfn,'String');
-writenodelm_nod_elm(outfn,e,p,[],1);
+set(handles.statustext,'String',tmp1);
+set(handles.statustext,'ForegroundColor',tmp2);
+
+h=gui_place_sources_detectors('mesh',[f1 filesep f2 '_nirfast_mesh']);
+data=guidata(h);
+sdcoords = handles.sdcoords;
+set(data.sources,  'String',cellstr(num2str(sdcoords,'%.8f %.8f %.8f')));
+set(data.detectors,'String',cellstr(num2str(sdcoords,'%.8f %.8f %.8f')));
 
 function outputfn_Callback(hObject, eventdata, handles)
 % hObject    handle to outputfn (see GCBO)
@@ -548,3 +590,106 @@ function nslices_CreateFcn(hObject, eventdata, handles)
 if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
     set(hObject,'BackgroundColor','white');
 end
+
+
+% --- Executes on selection change in type.
+function type_Callback(hObject, eventdata, handles)
+% hObject    handle to type (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hints: contents = cellstr(get(hObject,'String')) returns type contents as cell array
+%        contents{get(hObject,'Value')} returns selected item from type
+contents = cellstr(get(hObject,'String'));
+meshtype = contents{get(hObject,'Value')};
+switch meshtype
+    case 'Standard'
+        handles.meshtype = 'stnd';
+    case 'Fluorescence'
+        handles.meshtype = 'fluor';
+    case 'Spectral'
+        handles.meshtype = 'spec';
+    case 'BEM'
+        handles.meshtype = 'stnd_bem';
+    case 'BEM Fluorescence'
+        handles.meshtype = 'fluor_bem';
+    case 'BEM Spectral'
+        handles.meshtype = 'spec_bem';
+    case 'SPN'
+        handles.meshtype = 'stnd_spn';
+    otherwise
+        error(' This type of Nirfast mesh is not supported yet!');
+end
+guidata(hObject,handles);
+
+% --- Executes during object creation, after setting all properties.
+function type_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to type (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    empty - handles not created until after all CreateFcns called
+handles.meshtype = 'stnd';
+guidata(hObject,handles);
+
+% Hint: popupmenu controls usually have a white background on Windows.
+%       See ISPC and COMPUTER.
+if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
+    set(hObject,'BackgroundColor','white');
+end
+
+
+
+function sdfilename_Callback(hObject, eventdata, handles)
+% hObject    handle to sdfilename (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hints: get(hObject,'String') returns contents of sdfilename as text
+%        str2double(get(hObject,'String')) returns contents of sdfilename as a double
+
+
+% --- Executes during object creation, after setting all properties.
+function sdfilename_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to sdfilename (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    empty - handles not created until after all CreateFcns called
+
+% Hint: edit controls usually have a white background on Windows.
+%       See ISPC and COMPUTER.
+if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
+    set(hObject,'BackgroundColor','white');
+end
+
+
+% --- Executes on button press in sdbrowsebutton.
+function sdbrowsebutton_Callback(hObject, eventdata, handles)
+% hObject    handle to sdbrowsebutton (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+[fn, pathname] = uigetfile( ...
+    {'*.txt;*.csv','Text Files (*.txt,*.csv)';'*.*','All Files (*.*)'}, ...
+   'Pick a file');
+if isequal(fn,0)
+    warning('You need to select an image file!');
+end
+set(handles.sdfilename,'String',fullfile(pathname,fn));
+UpdateSDFileInfo(hObject,eventdata,handles);
+
+% --- Executes on key press with focus on sdfilename and none of its controls.
+function sdfilename_KeyPressFcn(hObject, eventdata, handles)
+% hObject    handle to sdfilename (see GCBO)
+% eventdata  structure with the following fields (see UICONTROL)
+%	Key: name of the key that was pressed, in lower case
+%	Character: character interpretation of the key(s) that was pressed
+%	Modifier: name(s) of the modifier key(s) (i.e., control, shift) pressed
+% handles    structure with handles and user data (see GUIDATA)
+if strcmp(eventdata.Key,'return')
+    UpdateSDFileInfo(hObject,eventdata,handles);
+end
+
+function UpdateSDFileInfo(hObject,eventdata,handles)
+set(handles.sdfilename,'ForegroundColor',[0 0 0]);
+handles.sdcoords = textread(get(handles.sdfilename,'String'));
+s = get(handles.imageinfotxt,'String');
+s{end+1} = sprintf('Number of source/detectors: %d',size(handles.sdcoords,1));
+set(handles.imageinfotxt,'String',s);
+guidata(hObject,handles);

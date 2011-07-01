@@ -68,13 +68,13 @@ int main(int argc, char *argv[])
 		cfs >> general_cell_size;
 		cfs >> special_subdomain_label;
 		cfs >> special_size;
-		std::cout << facet_angle << std::endl <<
+		/*std::cout << facet_angle << std::endl <<
 					 facet_size << std::endl <<
 					 facet_distance << std::endl <<
 					 cell_radius_edge << std::endl <<
 					 general_cell_size << std::endl <<
 					 special_subdomain_label << std::endl <<
-					special_size << std::endl;
+					special_size << std::endl;*/
 	}
 	if (argc >= 4)
 		outfn = argv[3];
