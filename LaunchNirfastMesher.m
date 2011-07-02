@@ -17,4 +17,3 @@ image2mesh_gui('UpdateInputFileInfo',h,[],data);
 % data=guidata(h);
 % image2mesh_gui('callimage2mesh_cgal_Callback',h,[],data);
 
-fprintf('\n Done creating mesh.\n');
