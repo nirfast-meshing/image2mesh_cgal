@@ -29,7 +29,7 @@ if isfield(param,'facet_distance'), facet_distance = param.facet_distance; end
 if isfield(param,'cell_radius_edge'), cell_radius_edge = param.cell_radius_edge; end
 if isfield(param,'cell_size'), cell_size = param.cell_size; end
 if isfield(param,'special_subdomain_label'), special_subdomain_label = param.special_subdomain_label; end
-if isfield(param,'special_size'), special_size = param.special_size; end
+if isfield(param,'special_subdomain_size'), special_size = param.special_subdomain_size; end
 
 % Write up the parameter files
 fid = fopen(cgalparam_fn,'wt');
