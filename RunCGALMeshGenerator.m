@@ -10,6 +10,13 @@ if ~isfield(param,'tmppath')
 else
     tmppath=param.tmppath;
 end
+if ~isfield(param,'delmedit')
+    delmedit = 1;
+elseif param.delmedit==0
+    delmedit = 0;
+else
+    delmedit = 1;
+end
 
 tmpmeshfn = [tmppath filesep '._out.mesh'];
 tmpinrfn  = [tmppath filesep '._cgal_mesher.inr'];
@@ -55,19 +62,8 @@ eval(makemeshcommand);
 if isfield(param,'Offset')
     p = p + repmat(param.Offset,size(p,1),1);
 end
-% Remove possible extra nodes that might be left out in 'p' list
-% CGAL tends to do this.
-
-nodes = unique([e(:,1);e(:,2);e(:,3);e(:,4)]);
-p = p(nodes,:);
-[tf ee] = ismember(e(:,1:4),nodes);
-if size(e,2) > 4
-    e = [ee e(:,5:end)];
-else
-    e = ee;
-end
-    
 warning('off','MATLAB:DELETE:FileNotFound');
-delete(cgalparam_fn,tmpmeshfn,tmpinrfn);
+delete(cgalparam_fn,tmpinrfn);
+if delmedit, delete(tmpmeshfn); end
 warning('on','MATLAB:DELETE:FileNotFound');
 

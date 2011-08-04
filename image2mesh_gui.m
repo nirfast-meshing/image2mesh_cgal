@@ -22,7 +22,7 @@ function varargout = image2mesh_gui(varargin)
 
 % Edit the above text to modify the response to help image2mesh_gui
 
-% Last Modified by GUIDE v2.5 30-Jun-2011 23:43:46
+% Last Modified by GUIDE v2.5 04-Aug-2011 18:39:44
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -320,6 +320,13 @@ if ~isempty(info)
         set(handles.ypixel,'String',num2str(info.PixelDimensions(2)));
         set(handles.zpixel,'String',num2str(info.PixelDimensions(3)));
         s{end+1} = sprintf('Pixel size: [%.3f %.3f %.3f]',info.PixelDimensions);
+        fook = min(info.PixelDimensions(1),info.PixelDimensions(2));
+        UpdateTetAndFacetSize(hObject,handles,min(info.PixelDimensions(3),fook));
+    else
+        set(handles.xpixel,'String','');
+        set(handles.ypixel,'String','');
+        set(handles.zpixel,'String','');
+        UpdateTetAndFacetSize(hObject,handles,0);
     end
     if isfield(info,'Dimensions')
         set(handles.nrows,  'String',num2str(info.Dimensions(1)));
@@ -354,20 +361,6 @@ if strcmp(eventdata.Key,'return')
     guidata(hObject,handles);
     UpdateInputFileInfo(hObject,eventdata,handles);
 end
-
-
-
-
-
-
-
-function xpixel_Callback(hObject, eventdata, handles)
-% hObject    handle to xpixel (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
-
-% Hints: get(hObject,'String') returns contents of xpixel as text
-%        str2double(get(hObject,'String')) returns contents of xpixel as a double
 
 
 % --- Executes during object creation, after setting all properties.
@@ -442,6 +435,7 @@ function callimage2mesh_cgal_Callback(hObject, eventdata, handles)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 handles = guidata(hObject);
+
 param = handles.maskinfo;
 param.facet_angle = str2double(get(handles.facet_angle,'String'));
 param.facet_distance = str2double(get(handles.facet_distance,'String'));
@@ -476,27 +470,40 @@ if isempty(param.tmppath)
 end
 
 
-h=helpdlg('Please wait...','Mesh Generator Running!');
-tmp1 = get(handles.statustext,'String');
+h=my_hlpdlg;
+% tmp1 = get(handles.statustext,'String');
 tmp2 = get(handles.statustext,'ForegroundColor');
 set(handles.statustext,'String',{'Status:';'';'Creating Mesh';'Please wait...'});
 set(handles.statustext,'ForegroundColor',[1 0 0]);
+drawnow
 
+param.delmedit = 0;
 [e p] = RunCGALMeshGenerator(handles.mask,param);
 
 outfn = get(handles.outputfn,'String');
-writenodelm_nod_elm(outfn,e,p,[],1);
+% writenodelm_nod_elm(outfn,e,p,[],1);
+genmesh.ele = e;
+genmesh.node = p;
+genmesh.nnpe = 4;
+genmesh.dim = 3;
 
 % call conversion to nirfast mesh
 [f1 f2] = fileparts(outfn);
 handles=guidata(hObject);
-nodelm2nirfast(outfn,[f1 filesep f2 '_nirfast_mesh'],handles.meshtype);
+fprintf(' Writing to nirfast format...');
+nodelm2nirfast(genmesh,[f1 filesep f2 '_nirfast_mesh'],handles.meshtype);
+fprintf('done.\n');
+
+tmp1={};
+tmp1{1} = 'Status';
+tmp1{end+1}='';
+tmp1{end+1} = sprintf('# of nodes: %d\n# of tets: %d\n',size(p,1),size(e,1));
+set(handles.statustext,'String',tmp1);
+set(handles.statustext,'ForegroundColor',tmp2);
 
 if ishandle(h)
     close(h);
 end
-set(handles.statustext,'String',tmp1);
-set(handles.statustext,'ForegroundColor',tmp2);
 
 h=gui_place_sources_detectors('mesh',[f1 filesep f2 '_nirfast_mesh']);
 data=guidata(h);
@@ -707,3 +714,185 @@ set(handles.imageinfotxt,'String',s);
 guidata(hObject,handles);
 
 
+function UpdateTetAndFacetSize(hObject,handles,minsize)
+% Update tet and facet size based on pixel size provided
+
+set(handles.cell_size,'String',num2str(2*minsize));
+set(handles.facet_size,'String',num2str(2*minsize));
+guidata(hObject,handles)
+
+
+% --- Executes on key press with focus on xpixel and none of its controls.
+function xpixel_KeyPressFcn(hObject, eventdata, handles)
+% hObject    handle to xpixel (see GCBO)
+% eventdata  structure with the following fields (see UICONTROL)
+%	Key: name of the key that was pressed, in lower case
+%	Character: character interpretation of the key(s) that was pressed
+%	Modifier: name(s) of the modifier key(s) (i.e., control, shift) pressed
+% handles    structure with handles and user data (see GUIDATA)
+if strcmp(eventdata.Key,'return')
+    x=str2double(get(handles.xpixel,'String'));
+    y=str2double(get(handles.ypixel,'String'));
+    z=str2double(get(handles.zpixel,'String'));
+    x = min(x, min(y,z));
+    if isnan(x), x = 0; end
+    UpdateTetAndFacetSize(hObject,handles,x);
+end
+% key = eventdata.Key;
+% if ~(strcmp(key,'backspace') || strcmp(key,'delete') || strcmp(key,'home')...
+%         || strcmp(key,'end') || strcmp(key,'leftarrow') || strcmp(key,'rightarrow'))
+%     xx=get(hObject,'String');
+%     xx = [xx eventdata.Character];
+%     set(handles.xpixel,'String',xx);
+%     guidata(hObject,handles);
+%     x=str2double(get(handles.xpixel,'String'));
+% %     x=str2double(xx);
+%     y=str2double(get(handles.ypixel,'String'));
+%     z=str2double(get(handles.zpixel,'String'));
+% 
+%     x = min(x, min(y,z));
+%     UpdateTetAndFacetSize(hObject,handles,x);
+% end
+
+
+% --- Executes on key press with focus on ypixel and none of its controls.
+function ypixel_KeyPressFcn(hObject, eventdata, handles)
+% hObject    handle to ypixel (see GCBO)
+% eventdata  structure with the following fields (see UICONTROL)
+%	Key: name of the key that was pressed, in lower case
+%	Character: character interpretation of the key(s) that was pressed
+%	Modifier: name(s) of the modifier key(s) (i.e., control, shift) pressed
+% handles    structure with handles and user data (see GUIDATA)
+if strcmp(eventdata.Key,'return')
+    x=str2double(get(handles.xpixel,'String'));
+    y=str2double(get(handles.ypixel,'String'));
+    z=str2double(get(handles.zpixel,'String'));
+    x = min(x, min(y,z));
+    if isnan(x), x = 0; end
+    UpdateTetAndFacetSize(hObject,handles,x);
+end
+
+% --- Executes on key press with focus on zpixel and none of its controls.
+function zpixel_KeyPressFcn(hObject, eventdata, handles)
+% hObject    handle to zpixel (see GCBO)
+% eventdata  structure with the following fields (see UICONTROL)
+%	Key: name of the key that was pressed, in lower case
+%	Character: character interpretation of the key(s) that was pressed
+%	Modifier: name(s) of the modifier key(s) (i.e., control, shift) pressed
+% handles    structure with handles and user data (see GUIDATA)
+if strcmp(eventdata.Key,'return')
+    x=str2double(get(handles.xpixel,'String'));
+    y=str2double(get(handles.ypixel,'String'));
+    z=str2double(get(handles.zpixel,'String'));
+    x = min(x, min(y,z));
+    if isnan(x), x = 0; end
+    UpdateTetAndFacetSize(hObject,handles,x);
+end
+
+% --- Executes on key press with focus on nrows and none of its controls.
+function nrows_KeyPressFcn(hObject, eventdata, handles)
+% hObject    handle to nrows (see GCBO)
+% eventdata  structure with the following fields (see UICONTROL)
+%	Key: name of the key that was pressed, in lower case
+%	Character: character interpretation of the key(s) that was pressed
+%	Modifier: name(s) of the modifier key(s) (i.e., control, shift) pressed
+% handles    structure with handles and user data (see GUIDATA)
+
+
+% --- Executes on key press with focus on ncols and none of its controls.
+function ncols_KeyPressFcn(hObject, eventdata, handles)
+% hObject    handle to ncols (see GCBO)
+% eventdata  structure with the following fields (see UICONTROL)
+%	Key: name of the key that was pressed, in lower case
+%	Character: character interpretation of the key(s) that was pressed
+%	Modifier: name(s) of the modifier key(s) (i.e., control, shift) pressed
+% handles    structure with handles and user data (see GUIDATA)
+
+
+% --- Executes on key press with focus on nslices and none of its controls.
+function nslices_KeyPressFcn(hObject, eventdata, handles)
+% hObject    handle to nslices (see GCBO)
+% eventdata  structure with the following fields (see UICONTROL)
+%	Key: name of the key that was pressed, in lower case
+%	Character: character interpretation of the key(s) that was pressed
+%	Modifier: name(s) of the modifier key(s) (i.e., control, shift) pressed
+% handles    structure with handles and user data (see GUIDATA)
+
+
+% --- If Enable == 'on', executes on mouse press in 5 pixel border.
+% --- Otherwise, executes on mouse press in 5 pixel border or over xpixel.
+function xpixel_ButtonDownFcn(hObject, eventdata, handles)
+% hObject    handle to xpixel (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+
+% --- If Enable == 'on', executes on mouse press in 5 pixel border.
+% --- Otherwise, executes on mouse press in 5 pixel border or over ypixel.
+function ypixel_ButtonDownFcn(hObject, eventdata, handles)
+% hObject    handle to ypixel (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+
+% --- If Enable == 'on', executes on mouse press in 5 pixel border.
+% --- Otherwise, executes on mouse press in 5 pixel border or over zpixel.
+function zpixel_ButtonDownFcn(hObject, eventdata, handles)
+% hObject    handle to zpixel (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+
+% --- If Enable == 'on', executes on mouse press in 5 pixel border.
+% --- Otherwise, executes on mouse press in 5 pixel border or over cell_size.
+function cell_size_ButtonDownFcn(hObject, eventdata, handles)
+% hObject    handle to cell_size (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+
+
+function xpixel_Callback(hObject, eventdata, handles)
+% hObject    handle to xpixel (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hints: get(hObject,'String') returns contents of xpixel as text
+%        str2double(get(hObject,'String')) returns contents of xpixel as a double
+
+
+% --- If Enable == 'on', executes on mouse press in 5 pixel border.
+% --- Otherwise, executes on mouse press in 5 pixel border or over outputfn.
+function outputfn_ButtonDownFcn(hObject, eventdata, handles)
+% hObject    handle to outputfn (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+
+% --- If Enable == 'on', executes on mouse press in 5 pixel border.
+% --- Otherwise, executes on mouse press in 5 pixel border or over infilename.
+function infilename_ButtonDownFcn(hObject, eventdata, handles)
+% hObject    handle to infilename (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+
+% --- Executes on key press with focus on outputfn and none of its controls.
+function outputfn_KeyPressFcn(hObject, eventdata, handles)
+% hObject    handle to outputfn (see GCBO)
+% eventdata  structure with the following fields (see UICONTROL)
+%	Key: name of the key that was pressed, in lower case
+%	Character: character interpretation of the key(s) that was pressed
+%	Modifier: name(s) of the modifier key(s) (i.e., control, shift) pressed
+% handles    structure with handles and user data (see GUIDATA)
+if strcmp(eventdata.Key,'return')
+    sx=str2double(get(handles.xpixel,'String'));
+    sy=str2double(get(handles.ypixel,'String'));
+    sz=str2double(get(handles.zpixel,'String'));
+    if isempty(sx) || isempty(sy) || isempty(sz) || ...
+            isnan(sx) || isnan(sy) || isnan(sz)
+        warning('image2mesh_gui:pixelsize_invalid','Pixel size information is invalid!');
+    end
+    tmp = min(sx, min(sy,sz));
+    UpdateTetAndFacetSize(hObject,handles,tmp);
+end
