@@ -308,7 +308,8 @@ s=add_extension(s,'.ele');
 set(handles.outputfn,'String',s)
 
 function UpdateImageInformation(hObject,eventdata,handles)
-[mask info] = GetImageStack(get(handles.infilename,'String'),[]);
+param.medfilter=1;
+[mask info] = GetImageStack(get(handles.infilename,'String'),param);
 regions = unique(mask(:));
 s={};
 if ~isempty(info)

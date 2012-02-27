@@ -52,7 +52,7 @@ if isfield(param,'medfilter') && param.medfilter==1
     param.medfilter = 1;
 end
 [mask info] = GetImageStack(fn,param);
-mask = uint8(mask);
+mask = uint16(mask);
 
 if isfield(info,'Offset')
     param.Offset = info.Offset;
