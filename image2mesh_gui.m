@@ -492,7 +492,7 @@ genmesh.dim = 3;
 [f1 f2] = fileparts(outfn);
 handles=guidata(hObject);
 fprintf(' Writing to nirfast format...');
-nodelm2nirfast(genmesh,[f1 filesep f2 '_nirfast_mesh'],handles.meshtype);
+solidmesh2nirfast(genmesh,[f1 filesep f2 '_nirfast_mesh'],handles.meshtype);
 fprintf('done.\n');
 
 tmp1={};
