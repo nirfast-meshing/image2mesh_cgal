@@ -22,7 +22,7 @@ function varargout = my_hlpdlg(varargin)
 
 % Edit the above text to modify the response to help my_hlpdlg
 
-% Last Modified by GUIDE v2.5 04-Aug-2011 18:03:22
+% Last Modified by GUIDE v2.5 02-Apr-2012 12:20:19
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -78,3 +78,14 @@ function pushbutton1_Callback(hObject, eventdata, handles)
 % hObject    handle to pushbutton1 (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
+
+
+% --- Executes during object creation, after setting all properties.
+function text2_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to text2 (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    empty - handles not created until after all CreateFcns called
+if ispc
+    set(hObject,'FontSize',11);
+end
+

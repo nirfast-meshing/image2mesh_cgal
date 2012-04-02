@@ -464,8 +464,11 @@ param.PixelSpacing(1) = sx;
 param.PixelSpacing(2) = sy;
 param.SliceThickness  = sz;
 
-foo = get(handles.outputfn,'String');
-param.tmppath = fileparts(foo);
+outfn = get(handles.outputfn,'String');
+param.tmppath = fileparts(outfn);
+if isempty(param.tmppath)
+    param.tmppath = getuserdir();
+end
 if isempty(param.tmppath)
     warning('USERPATH:NotSet','Can not locate user folder with write permissions!');
 end
@@ -481,7 +484,6 @@ drawnow
 param.delmedit = 0;
 [e p] = RunCGALMeshGenerator(handles.mask,param);
 
-outfn = get(handles.outputfn,'String');
 % writenodelm_nod_elm(outfn,e,p,[],1);
 genmesh.ele = e;
 genmesh.node = p;
@@ -490,9 +492,14 @@ genmesh.dim = 3;
 
 % call conversion to nirfast mesh
 [f1 f2] = fileparts(outfn);
+if isempty(f1)
+    savefn_ = f2;
+else
+    savefn_ = [f1 filesep f2];
+end
 handles=guidata(hObject);
 fprintf(' Writing to nirfast format...');
-solidmesh2nirfast(genmesh,[f1 filesep f2 '_nirfast_mesh'],handles.meshtype);
+solidmesh2nirfast(genmesh,[savefn_ '_nirfast_mesh'],handles.meshtype);
 fprintf('done.\n');
 
 tmp1={};
@@ -506,7 +513,7 @@ if ishandle(h)
     close(h);
 end
 
-h=gui_place_sources_detectors('mesh',[f1 filesep f2 '_nirfast_mesh']);
+h=gui_place_sources_detectors('mesh',[savefn_ '_nirfast_mesh']);
 data=guidata(h);
 
 if ~isempty(handles.sdcoords)
