@@ -474,7 +474,6 @@ if isempty(param.tmppath)
 end
 
 
-h=my_hlpdlg;
 % tmp1 = get(handles.statustext,'String');
 tmp2 = get(handles.statustext,'ForegroundColor');
 set(handles.statustext,'String',{'Status:';'';'Creating Mesh';'Please wait...'});
@@ -482,6 +481,7 @@ set(handles.statustext,'ForegroundColor',[1 0 0]);
 drawnow
 
 param.delmedit = 0;
+hf = waitbar(0,'Creating mesh, this may take several minutes.');
 [e p] = RunCGALMeshGenerator(handles.mask,param);
 
 % writenodelm_nod_elm(outfn,e,p,[],1);
@@ -499,6 +499,7 @@ else
 end
 handles=guidata(hObject);
 fprintf(' Writing to nirfast format...');
+waitbar(0.7,hf,'Importing to nirfast');
 solidmesh2nirfast(genmesh,[savefn_ '_nirfast_mesh'],handles.meshtype);
 fprintf('done.\n');
 
@@ -509,11 +510,9 @@ tmp1{end+1} = sprintf('# of nodes: %d\n# of tets: %d\n',size(p,1),size(e,1));
 set(handles.statustext,'String',tmp1);
 set(handles.statustext,'ForegroundColor',tmp2);
 
-if ishandle(h)
-    close(h);
-end
-
+waitbar(0.9,hf,'Loading mesh');
 h=gui_place_sources_detectors('mesh',[savefn_ '_nirfast_mesh']);
+close(hf);
 data=guidata(h);
 
 if ~isempty(handles.sdcoords)
