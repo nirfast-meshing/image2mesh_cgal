@@ -6,10 +6,11 @@ function [e p] = RunCGALMeshGenerator(mask,param)
 %   Hamid Ghadyani May 2011
 
 if ~isfield(param,'tmppath')
-    tmppath=pwd;
+    tmppath=tempdir;
 else
     tmppath=param.tmppath;
 end
+
 if ~isfield(param,'delmedit')
     delmedit = 1;
 elseif param.delmedit==0
