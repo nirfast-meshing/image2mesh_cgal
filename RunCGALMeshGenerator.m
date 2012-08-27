@@ -19,9 +19,9 @@ else
     delmedit = 1;
 end
 
-tmpmeshfn = [tmppath filesep '._out.mesh'];
-tmpinrfn  = [tmppath filesep '._cgal_mesher.inr'];
-cgalparam_fn = [tmppath filesep '._criteria.txt'];
+tmpmeshfn = fullfile(tmppath,'._out.mesh');
+tmpinrfn  = fullfile(tmppath,'._cgal_mesher.inr');
+cgalparam_fn = fullfile(tmppath,'._criteria.txt');
 
 savefn = add_extension(tmpinrfn,'.inr');
 saveinr(mask,savefn,param);

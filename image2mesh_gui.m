@@ -500,7 +500,7 @@ genmesh.dim = 3;
 if isempty(f1)
     savefn_ = f2;
 else
-    savefn_ = [f1 filesep f2];
+    savefn_ = fullfile(f1,f2);
 end
 handles=guidata(hObject);
 fprintf(' Writing to nirfast format...');
