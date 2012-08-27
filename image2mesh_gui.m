@@ -490,6 +490,8 @@ genmesh.node = p;
 genmesh.nnpe = 4;
 genmesh.dim = 3;
 
+% Ask if user wants to optimize quality
+
 % call conversion to nirfast mesh
 [f1 f2] = fileparts(outfn);
 if isempty(f1)
