@@ -484,13 +484,16 @@ param.delmedit = 0;
 hf = waitbar(0,'Creating mesh, this may take several minutes.');
 [e p] = RunCGALMeshGenerator(handles.mask,param);
 
-% writenodelm_nod_elm(outfn,e,p,[],1);
-genmesh.ele = e;
-genmesh.node = p;
+% Ask if user wants to optimize quality
+[junk optimize_flag] = optimize_mesh_gui;
+if optimize_flag
+    [genmesh.ele genmesh.node] = improve_mesh_use_stellar(e, p);
+else
+    genmesh.ele = e;
+    genmesh.node = p;
+end
 genmesh.nnpe = 4;
 genmesh.dim = 3;
-
-% Ask if user wants to optimize quality
 
 % call conversion to nirfast mesh
 [f1 f2] = fileparts(outfn);
