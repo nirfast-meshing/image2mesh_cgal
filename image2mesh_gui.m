@@ -436,43 +436,77 @@ function callimage2mesh_cgal_Callback(hObject, eventdata, handles)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 handles = guidata(hObject);
+mainGUIhandle = nirfast;
+mainGUIdata  = guidata(mainGUIhandle);
+content = get(mainGUIdata.script,'String');
+batch = get(mainGUIdata.batch_mode,'Value');
 
-param = handles.maskinfo;
-param.facet_angle = str2double(get(handles.facet_angle,'String'));
-param.facet_distance = str2double(get(handles.facet_distance,'String'));
-param.facet_size = str2double(get(handles.facet_size,'String'));
-param.medfilter = 0;
-param.pad = 0;
-param.cell_size = str2double(get(handles.cell_size,'String'));
-param.cell_radius_edge = str2double(get(handles.cell_radius_edge,'String'));
-param.special_subdomain_label = str2num(get(handles.specialregion_label,'String'));
-param.special_subdomain_size  = str2num(get(handles.specialregion_size, 'String'));
+foo = sprintf('%s\n%s%s%s\n', ...
+    'param.medfilter=1;', ...
+    '[mask info] = GetImageStack(''', get(handles.infilename, 'String'),...
+    ''',param);');
+    %'param = handles.maskinfo;');
+if ~batch, eval(foo); end
+content{end+1} = foo;
 
-sx=str2double(get(handles.xpixel,'String'));
-sy=str2double(get(handles.ypixel,'String'));
-sz=str2double(get(handles.zpixel,'String'));
-if isempty(sx) || isempty(sy) || isempty(sz) || ...
-        isnan(sx) || isnan(sy) || isnan(sz)
-    errordlg('Pixel size information is invalid!');
-    error('Pixel size information is invalid!');
+foo = sprintf('%s%s%s\n%s%s%s\n%s%s%s\n',...
+    'param.facet_angle = (',...
+    get(handles.facet_angle,'String'), ');',...
+    'param.facet_distance = (',...
+    get(handles.facet_distance,'String'), ');',...
+    'param.facet_size = (',...
+    get(handles.facet_size,'String'), ');');
+if ~batch, eval(foo); end
+content{end+1} = foo;
+
+foo = sprintf('%s\n%s\n%s%s%s\n%s%s%s\n%s%s%s\n%s%s%s\n',...
+    'param.medfilter = 0;',...
+    'param.pad = 0;',...
+    'param.cell_size = (',...
+    get(handles.cell_size,'String'), ');',...
+    'param.cell_radius_edge = (',...
+    get(handles.cell_radius_edge,'String'), ');',...
+    'param.special_subdomain_label = (',...
+    get(handles.specialregion_label,'String'), ');',...
+    'param.special_subdomain_size  = (',... 
+    get(handles.specialregion_size, 'String'), ');');
+if ~batch, eval(foo); end
+content{end+1} = foo;
+
+
+foo = sprintf('%s%s%s\n%s%s%s\n%s%s%s\n',...
+    'sx=(', get(handles.xpixel,'String'), ');',...
+    'sy=(', get(handles.ypixel,'String'), ');',...
+    'sz=(', get(handles.zpixel,'String'), ');');
+if ~batch, eval(foo); end
+content{end+1} = foo;
+if ~batch
+    if isempty(sx) || isempty(sy) || isempty(sz) || ...
+            isnan(sx) || isnan(sy) || isnan(sz)
+        errordlg('Pixel size information is invalid!');
+        error('Pixel size information is invalid!');
+    end
 end
 
-param.PixelDimensions(1) = sx;
-param.PixelDimensions(2) = sy;
-param.PixelDimensions(3) = sz;
-param.PixelSpacing(1) = sx;
-param.PixelSpacing(2) = sy;
-param.SliceThickness  = sz;
+foo = sprintf('%s\n%s\n%s\n%s\n%s\n%s\n',...
+'param.PixelDimensions(1) = sx;',...
+'param.PixelDimensions(2) = sy;',...
+'param.PixelDimensions(3) = sz;',...
+'param.PixelSpacing(1) = sx;',...
+'param.PixelSpacing(2) = sy;',...
+'param.SliceThickness  = sz;');
+if ~batch, eval(foo); end
+content{end+1} = foo;
 
-outfn = get(handles.outputfn,'String');
-param.tmppath = fileparts(outfn);
-if isempty(param.tmppath)
-    param.tmppath = getuserdir();
-end
-if isempty(param.tmppath)
-    warning('USERPATH:NotSet','Can not locate user folder with write permissions!');
-end
-
+foo = sprintf('%s%s%s\n%s\n%s, %s %s\n%s\n',...
+    'outfn = ''',  get(handles.outputfn,'String'),  ''';',...
+    'param.tmppath = fileparts(outfn);',...
+    'if isempty(param.tmppath)',...
+    'param.tmppath = getuserdir();',...
+    'end',...
+    'param.delmedit = 0;');
+if ~batch, eval(foo); end
+content{end+1} = foo;
 
 % tmp1 = get(handles.statustext,'String');
 tmp2 = get(handles.statustext,'ForegroundColor');
@@ -480,119 +514,101 @@ set(handles.statustext,'String',{'Status:';'';'Creating Mesh';'Please wait...'})
 set(handles.statustext,'ForegroundColor',[1 0 0]);
 drawnow
 
-param.delmedit = 0;
 hf = waitbar(0,'Creating mesh, this may take several minutes.');
-[e p] = RunCGALMeshGenerator(handles.mask,param);
+foo = '[e p] = RunCGALMeshGenerator(mask,param);';
+if ~batch, eval(foo); end
+content{end+1} = foo;
 
 % Ask if user wants to optimize quality
 [junk optimize_flag] = optimize_mesh_gui;
+
 if optimize_flag
-    [genmesh.ele genmesh.node mat] = ...
-        call_improve_mesh_use_stellar(e, p);
+    foo = ['[genmesh.ele genmesh.node mat] = ' ...
+        'call_improve_mesh_use_stellar(e, p);'];
+    if ~batch, eval(foo); end
+    content{end+1} = foo;
 else
-    genmesh.ele = e;
-    genmesh.node = p;
+    foo =sprintf('genmesh.ele = e;\ngenmesh.node = p;');
+    if ~batch, eval(foo); end
+    content{end+1} = foo;
 end
-genmesh.ele(:,5) = mat;
-genmesh.nnpe = 4;
-genmesh.dim = 3;
+foo = sprintf('%s\n%s\n%s\n', ...
+    'genmesh.ele(:,5) = mat;', ...
+    'genmesh.nnpe = 4;', ...
+    'genmesh.dim = 3;');
+if ~batch, eval(foo); end
+content{end+1} = foo;
 
 % call conversion to nirfast mesh
-[f1 f2] = fileparts(outfn);
-if isempty(f1)
-    savefn_ = f2;
-else
-    savefn_ = fullfile(f1,f2);
-end
+foo = sprintf('%s\n%s, %s %s, %s %s', ...
+    '[f1 f2] = fileparts(outfn);', ...
+    'if isempty(f1)', ...
+    'savefn_ = f2;', ...
+    'else', ...
+    'savefn_ = fullfile(f1,f2);', ...
+    'end');
+if ~batch, eval(foo); end
+content{end+1} = foo;
+
 handles=guidata(hObject);
 fprintf(' Writing to nirfast format...');
 waitbar(0.7,hf,'Importing to nirfast');
-solidmesh2nirfast(genmesh,[savefn_ '_nirfast_mesh'],handles.meshtype);
-fprintf('done.\n');
+foo = ['solidmesh2nirfast(genmesh,''' savefn_,...
+    '_nirfast_mesh'',''' handles.meshtype ''');'];
+if ~batch, eval(foo); end
+content{end+1} = foo;
 
-tmp1={};
-tmp1{1} = 'Status';
-tmp1{end+1}='';
-tmp1{end+1} = sprintf('# of nodes: %d\n# of tets: %d\n',size(p,1),size(e,1));
-set(handles.statustext,'String',tmp1);
-set(handles.statustext,'ForegroundColor',tmp2);
+foo = sprintf('%s\n','fprintf(''done.\n'');');
+if ~batch, eval(foo); end
+content{end+1} = foo;
+
+if ~batch
+    tmp1={};
+    tmp1{1} = 'Status';
+    tmp1{end+1}='';
+    tmp1{end+1} = sprintf('# of nodes: %d\n# of tets: %d\n',size(p,1),size(e,1));
+    set(handles.statustext,'String',tmp1);
+    set(handles.statustext,'ForegroundColor',tmp2);
+end
+
+foo = ['mesh = load_mesh(''' savefn_ '_nirfast_mesh'');'];
+if ~batch, eval(foo); end
+content{end+1} = foo;
+
+tempvar = {'e', 'f1', 'f2', 'genmesh','info','mask','mat','e','p',...
+    'sx','sy','sz'};
+foo= 'clear';
+for i_=1:length(tempvar)
+    foo = horzcat(foo,' ',tempvar{i_});
+end
+if ~batch, eval(foo); end
+content{end+1} = foo;
+
+set(mainGUIdata.script, 'String', content);
+guidata(nirfast, mainGUIdata);
 
 waitbar(0.9,hf,'Loading mesh');
-h=gui_place_sources_detectors('mesh',[savefn_ '_nirfast_mesh']);
+if ~batch
+    h=gui_place_sources_detectors('mesh',[savefn_ '_nirfast_mesh']);
+end
 close(hf);
-data=guidata(h);
-
-if ~isempty(handles.sdcoords)
-    guidata(hObject,handles);
-    set(data.sources,  'String',cellstr(num2str(handles.sdcoords,'%.8f %.8f %.8f')));
-    set(data.detectors,'String',cellstr(num2str(handles.sdcoords,'%.8f %.8f %.8f')));
-    axes(data.mesh)
-    plot3(handles.sdcoords(:,1),handles.sdcoords(:,2),handles.sdcoords(:,3),'ro');
-    plot3(handles.sdcoords(:,1),handles.sdcoords(:,2),handles.sdcoords(:,3),'bx');
-end
-
-function [ele node new_elem_region new_node_region] = ...
-    call_improve_mesh_use_stellar(e, p)
-% Check if mesh has region information
-if size(e,2) > 4
-    region_ids = unique(e(:,5));
-elseif size(e,2) == 4
-    region_ids = 1;
-    e(:,5) = ones(size(e,1),1);
-else
-    error('Mesh needs to be tetrahedral.');
-end
-if min(region_ids)==0, region_ids=region_ids+1; end
-
-% Assign region info to each node
-oldr = zeros(size(p,1),1);
-for i=1:length(region_ids)
-    relem = e(e(:,5)==region_ids(i),:);
-    rnodes = unique([relem(:,1);relem(:,2);relem(:,3);relem(:,4)]);
-    oldr(rnodes) = region_ids(i);
-end
-% Improve the mesh
-config.qualmeasure = 0;
-[ele node] = improve_mesh_use_stellar(e(:,1:4), p, config);
-
-% Since we get a totally new mesh, we need to
-% reassign region propertyies for nodes.
-% Find the closest nodes (from old set 'p') to new set of nodes
-% Meshes can be huge so we only need to examine nodes within a bounding box
-% of the current node being examined.
-new_node_region = zeros(size(node,1),1,'int8');
-edge_avg = GetEdgeSize(e, p, 4);
-% mesh_bbx = max(p(:,1:3)) - min(p(:,1:3));
-% diag_len = norm(mesh_bbx);
-delta = edge_avg * 2.0;
-for i=1:size(node,1)
-    bf = abs(node(i,1) - p(:,1)) < delta & ...
-        abs(node(i,2) - p(:,2)) < delta & ...
-        abs(node(i,3) - p(:,3)) < delta;
-    dist = dist2(node(i,:), p(bf,:));
-    origr = oldr(bf,:);
-    [foo idx] = sort(dist, 'ascend');
-    new_node_region(i) = origr(idx(1));
-end
-
-% Sort region IDs based on number of nodes they are assigned to
-sumr = zeros(1,length(region_ids));
-new_elem_region = zeros(size(ele,1),1,'int8');
-for i=1:length(region_ids)
-    sumr(i) = sum(new_node_region==region_ids(i));
-end
-[foo idx] = sort(sumr,'ascend');
-region_ids = region_ids(idx);
-% Assign each element a region ID based on how many nodes of each element
-% have been associated with that region ID
-for i=1:4 % nnpe
-    for j=1:length(region_ids)
-        tf1 = ismember(new_node_region(ele(:,1:4)),region_ids(j));
-        nc = sum(tf1,2);
-        new_elem_region(nc == i) = region_ids(j);
+if ~batch
+    data=guidata(h);
+    if ~isempty(handles.sdcoords)
+        guidata(hObject,handles);
+        set(data.sources,  'String',cellstr(num2str(handles.sdcoords,'%.8f %.8f %.8f')));
+        set(data.detectors,'String',cellstr(num2str(handles.sdcoords,'%.8f %.8f %.8f')));
+        axes(data.mesh)
+        plot3(handles.sdcoords(:,1),handles.sdcoords(:,2),handles.sdcoords(:,3),'ro');
+        plot3(handles.sdcoords(:,1),handles.sdcoords(:,2),handles.sdcoords(:,3),'bx');
     end
 end
 
+foo = sprintf('clear save_fn\n%%--------------------%%\n');
+if ~batch, eval(foo); end
+content{end+1} = foo;
+set(mainGUIdata.script, 'String', content);
+guidata(nirfast, mainGUIdata);
 
 function outputfn_Callback(hObject, eventdata, handles)
 % hObject    handle to outputfn (see GCBO)
