@@ -621,8 +621,8 @@ function [ele node newr] = call_improve_mesh_use_stellar(e, p)
 if size(e,2) > 4
     region_ids = unique(e(:,5));
 elseif size(e,2) == 4
-    region_ids = ones(size(e,1),1);
-    e(:,5) = region_ids;
+    region_ids = 1;
+    e(:,5) = ones(size(e,1),1);
 else
     error('Mesh needs to be tetrahedral.');
 end
@@ -636,25 +636,29 @@ for i=1:length(region_ids)
     oldr(rnodes) = region_ids(i);
 end
 % Improve the mesh
-tic;
 config.qualmeasure = 0;
 [ie ip] = improve_mesh_use_stellar(e(:,1:4), p, config);
-t1 = toc;
-config.qualmeasure = 2;
-[ie ip] = improve_mesh_use_stellar(e(:,1:4), p, config);
-t2 = toc;
-fprintf('%f vs %f\n',t1,t2);
 
 % Since we get a totally new mesh, we need to
 % reassign region propertyies for nodes.
 % Find the closest nodes (from old set 'p') to new set of nodes
-tic;
-dist = dist2(ip, p);
-toc
-[foo idx] = sort(dist,2,'ascend');
-% Assign old node regions to new ones
-newr = oldr(idx);
-assert(length(newr) == length(oldr));
+% Meshes can be huge so we only need to examine nodes within a bounding box
+% of the current node being examined.
+newr = zeros(size(ip,1),1,'int8');
+edge_avg = GetEdgeSize(e, p, 4);
+% mesh_bbx = max(p(:,1:3)) - min(p(:,1:3));
+% diag_len = norm(mesh_bbx);
+delta = edge_avg * 2.0;
+for i=1:size(ip,1)
+    bf = abs(ip(i,1) - p(:,1)) < delta & ...
+        abs(ip(i,2) - p(:,2)) < delta & ...
+        abs(ip(i,3) - p(:,3)) < delta;
+    dist = dist2(ip(i,:), p(bf,:));
+    origr = oldr(bf,:);
+    [foo idx] = sort(dist, 'ascend');
+    newr(i) = origr(idx(1));
+end
+
 ele = ie;
 node = ip;
 
