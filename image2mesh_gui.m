@@ -481,11 +481,11 @@ foo = sprintf('%s%s%s\n%s%s%s\n%s%s%s\n',...
 if ~batch, eval(foo); end
 content{end+1} = foo;
 if ~batch
-    if isempty(sx) || isempty(sy) || isempty(sz) || ...
-            isnan(sx) || isnan(sy) || isnan(sz)
-        errordlg('Pixel size information is invalid!');
-        error('Pixel size information is invalid!');
-    end
+if isempty(sx) || isempty(sy) || isempty(sz) || ...
+        isnan(sx) || isnan(sy) || isnan(sz)
+    errordlg('Pixel size information is invalid!');
+    error('Pixel size information is invalid!');
+end
 end
 
 foo = sprintf('%s\n%s\n%s\n%s\n%s\n%s\n',...
@@ -569,12 +569,12 @@ if ~batch, eval(foo); end
 content{end+1} = foo;
 
 if ~batch
-    tmp1={};
-    tmp1{1} = 'Status';
-    tmp1{end+1}='';
-    tmp1{end+1} = sprintf('# of nodes: %d\n# of tets: %d\n',size(p,1),size(e,1));
-    set(handles.statustext,'String',tmp1);
-    set(handles.statustext,'ForegroundColor',tmp2);
+tmp1={};
+tmp1{1} = 'Status';
+tmp1{end+1}='';
+tmp1{end+1} = sprintf('# of nodes: %d\n# of tets: %d\n',size(p,1),size(e,1));
+set(handles.statustext,'String',tmp1);
+set(handles.statustext,'ForegroundColor',tmp2);
 end
 
 foo = ['mesh = load_mesh(''' savefn_ '_nirfast_mesh'');'];
@@ -595,19 +595,19 @@ guidata(nirfast, mainGUIdata);
 
 waitbar(0.9,hf,'Loading mesh');
 if ~batch
-    h=gui_place_sources_detectors('mesh',[savefn_ '_nirfast_mesh']);
+h=gui_place_sources_detectors('mesh',[savefn_ '_nirfast_mesh']);
 end
 close(hf);
 if ~batch
-    data=guidata(h);
-    if ~isempty(handles.sdcoords)
-        guidata(hObject,handles);
-        set(data.sources,  'String',cellstr(num2str(handles.sdcoords,'%.8f %.8f %.8f')));
-        set(data.detectors,'String',cellstr(num2str(handles.sdcoords,'%.8f %.8f %.8f')));
-        axes(data.mesh)
-        plot3(handles.sdcoords(:,1),handles.sdcoords(:,2),handles.sdcoords(:,3),'ro');
-        plot3(handles.sdcoords(:,1),handles.sdcoords(:,2),handles.sdcoords(:,3),'bx');
-    end
+data=guidata(h);
+if ~isempty(handles.sdcoords)
+    guidata(hObject,handles);
+    set(data.sources,  'String',cellstr(num2str(handles.sdcoords,'%.8f %.8f %.8f')));
+    set(data.detectors,'String',cellstr(num2str(handles.sdcoords,'%.8f %.8f %.8f')));
+    axes(data.mesh)
+    plot3(handles.sdcoords(:,1),handles.sdcoords(:,2),handles.sdcoords(:,3),'ro');
+    plot3(handles.sdcoords(:,1),handles.sdcoords(:,2),handles.sdcoords(:,3),'bx');
+end
 end
 
 foo = sprintf('clear save_fn\n%%--------------------%%\n');
@@ -615,6 +615,41 @@ if ~batch, eval(foo); end
 content{end+1} = foo;
 set(mainGUIdata.script, 'String', content);
 guidata(nirfast, mainGUIdata);
+
+function [ele node newr] = call_improve_mesh_use_stellar(e, p)
+if size(e,2) > 4
+    region_ids = unique(e(:,5));
+elseif size(e,2) == 4
+    region_ids = ones(size(e,1),1);
+    e(:,5) = region_ids;
+else
+    error('Mesh needs to be tetrahedral.');
+end
+if min(region_ids)==0, region_ids=region_ids+1; end
+
+oldr = zeros(size(p,1),1);
+for i=1:length(region_ids)
+    relem = e(e(:,5)==region_ids(i),:);
+    rnodes = unique([relem(:,1);relem(:,2);relem(:,3);relem(:,4)]);
+    oldr(rnodes) = region_ids(i);
+end
+tic;
+config.qualmeasure = 0;
+[ie ip] = improve_mesh_use_stellar(e(:,1:4), p, config);
+t1 = toc;
+config.qualmeasure = 2;
+[ie ip] = improve_mesh_use_stellar(e(:,1:4), p, config);
+t2 = toc;
+fprintf('%f vs %f\n',t1,t2);
+
+tic;
+dist = dist2(ip, p);
+toc
+[foo idx] = sort(dist,2,'ascend');
+newr = oldr(idx);
+assert(length(newr) == length(oldr));
+ele = ie;
+node = ip;
 
 function outputfn_Callback(hObject, eventdata, handles)
 % hObject    handle to outputfn (see GCBO)
