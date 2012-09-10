@@ -617,6 +617,7 @@ set(mainGUIdata.script, 'String', content);
 guidata(nirfast, mainGUIdata);
 
 function [ele node newr] = call_improve_mesh_use_stellar(e, p)
+% Check if mesh has region information
 if size(e,2) > 4
     region_ids = unique(e(:,5));
 elseif size(e,2) == 4
@@ -627,12 +628,14 @@ else
 end
 if min(region_ids)==0, region_ids=region_ids+1; end
 
+% Assign region info to each node
 oldr = zeros(size(p,1),1);
 for i=1:length(region_ids)
     relem = e(e(:,5)==region_ids(i),:);
     rnodes = unique([relem(:,1);relem(:,2);relem(:,3);relem(:,4)]);
     oldr(rnodes) = region_ids(i);
 end
+% Improve the mesh
 tic;
 config.qualmeasure = 0;
 [ie ip] = improve_mesh_use_stellar(e(:,1:4), p, config);
@@ -642,10 +645,14 @@ config.qualmeasure = 2;
 t2 = toc;
 fprintf('%f vs %f\n',t1,t2);
 
+% Since we get a totally new mesh, we need to
+% reassign region propertyies for nodes.
+% Find the closest nodes (from old set 'p') to new set of nodes
 tic;
 dist = dist2(ip, p);
 toc
 [foo idx] = sort(dist,2,'ascend');
+% Assign old node regions to new ones
 newr = oldr(idx);
 assert(length(newr) == length(oldr));
 ele = ie;
