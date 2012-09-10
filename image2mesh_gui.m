@@ -481,11 +481,11 @@ foo = sprintf('%s%s%s\n%s%s%s\n%s%s%s\n',...
 if ~batch, eval(foo); end
 content{end+1} = foo;
 if ~batch
-if isempty(sx) || isempty(sy) || isempty(sz) || ...
-        isnan(sx) || isnan(sy) || isnan(sz)
-    errordlg('Pixel size information is invalid!');
-    error('Pixel size information is invalid!');
-end
+    if isempty(sx) || isempty(sy) || isempty(sz) || ...
+            isnan(sx) || isnan(sy) || isnan(sz)
+        errordlg('Pixel size information is invalid!');
+        error('Pixel size information is invalid!');
+    end
 end
 
 foo = sprintf('%s\n%s\n%s\n%s\n%s\n%s\n',...
@@ -519,6 +519,10 @@ foo = '[e p] = RunCGALMeshGenerator(mask,param);';
 if ~batch, eval(foo); end
 content{end+1} = foo;
 
+foo = 'q1 = simpqual(p, e, ''Min_Sin_Dihedral'');';
+if ~batch, eval(foo); end
+content{end+1} = foo;
+
 if size(e,2) > 4
     mat = e(:,5);
 else
@@ -533,17 +537,37 @@ if optimize_flag
         'call_improve_mesh_use_stellar(e, p);'];
     if ~batch, eval(foo); end
     content{end+1} = foo;
+    foo = 'q2 = simpqual(genmesh.node, genmesh.ele, ''Min_Sin_Dihedral'');';
+    if ~batch, eval(foo); end
+    content{end+1} = foo;
 else
     foo =sprintf('genmesh.ele = e;\ngenmesh.node = p;');
     if ~batch, eval(foo); end
     content{end+1} = foo;
 end
-foo = sprintf('%s\n%s\n%s\n', ...
-    'genmesh.ele(:,5) = mat;', ...
-    'genmesh.nnpe = 4;', ...
-    'genmesh.dim = 3;');
+foo = sprintf('%s\n',...
+    'genmesh.ele(:,5) = mat; genmesh.nnpe = 4; genmesh.dim = 3;');
 if ~batch, eval(foo); end
 content{end+1} = foo;
+
+if optimize_flag
+    foo = sprintf(['\n%s\n%s\n%s\n%s\n%s\n%s\n'...
+        '%s\n%s\n%s\n%s\n%s\n%s\n%s\n'],...
+        'figure; subplot(1,2,1);','hist(q1,30);',...
+        'xlabel(''Min sin(dihedral angles)'')',...
+        'h = findobj(gca,''Type'',''patch'');',...
+        'set(h,''FaceColor'',''r'',''EdgeColor'',''w'');',...
+        'grid on; title(''Before Optimization'');',...
+        'cr1 = axis;', 'subplot(1,2,2); hist(q2,30); grid on',...
+        'cr2 = axis; axis([0 1 min(cr1(3),cr2(3)) max(cr1(4),cr2(4))]);',...
+        'h = findobj(gca,''Type'',''patch'');',...
+        'set(h,''FaceColor'',[0.33 0.5 0.17]);',...
+        'xlabel(''Min sin(dihedral angles)'')',...
+        'title(''After Optimization.''); subplot(1,2,1);',...
+        'axis([0 1 min(cr1(3),cr2(3)) max(cr1(4),cr2(4))]);');
+    if ~batch, eval(foo); end
+    content{end+1} = foo;
+end
 
 % call conversion to nirfast mesh
 foo = sprintf('%s\n%s, %s %s, %s %s', ...
@@ -553,8 +577,7 @@ foo = sprintf('%s\n%s, %s %s, %s %s', ...
     'else', ...
     'savefn_ = fullfile(f1,f2);', ...
     'end');
-if ~batch, eval(foo); end
-content{end+1} = foo;
+eval(foo);
 
 handles=guidata(hObject);
 fprintf(' Writing to nirfast format...');
@@ -569,12 +592,12 @@ if ~batch, eval(foo); end
 content{end+1} = foo;
 
 if ~batch
-tmp1={};
-tmp1{1} = 'Status';
-tmp1{end+1}='';
-tmp1{end+1} = sprintf('# of nodes: %d\n# of tets: %d\n',size(p,1),size(e,1));
-set(handles.statustext,'String',tmp1);
-set(handles.statustext,'ForegroundColor',tmp2);
+    tmp1={};
+    tmp1{1} = 'Status';
+    tmp1{end+1}='';
+    tmp1{end+1} = sprintf('# of nodes: %d\n# of tets: %d\n',size(p,1),size(e,1));
+    set(handles.statustext,'String',tmp1);
+    set(handles.statustext,'ForegroundColor',tmp2);
 end
 
 foo = ['mesh = load_mesh(''' savefn_ '_nirfast_mesh'');'];
@@ -582,7 +605,7 @@ if ~batch, eval(foo); end
 content{end+1} = foo;
 
 tempvar = {'e', 'f1', 'f2', 'genmesh','info','mask','mat','e','p',...
-    'sx','sy','sz'};
+    'sx','sy','sz','cr1','cr2','genmesh','outfn','param'};
 foo= 'clear';
 for i_=1:length(tempvar)
     foo = horzcat(foo,' ',tempvar{i_});
@@ -595,19 +618,19 @@ guidata(nirfast, mainGUIdata);
 
 waitbar(0.9,hf,'Loading mesh');
 if ~batch
-h=gui_place_sources_detectors('mesh',[savefn_ '_nirfast_mesh']);
+    h=gui_place_sources_detectors('mesh',[savefn_ '_nirfast_mesh']);
 end
 close(hf);
 if ~batch
-data=guidata(h);
-if ~isempty(handles.sdcoords)
-    guidata(hObject,handles);
-    set(data.sources,  'String',cellstr(num2str(handles.sdcoords,'%.8f %.8f %.8f')));
-    set(data.detectors,'String',cellstr(num2str(handles.sdcoords,'%.8f %.8f %.8f')));
-    axes(data.mesh)
-    plot3(handles.sdcoords(:,1),handles.sdcoords(:,2),handles.sdcoords(:,3),'ro');
-    plot3(handles.sdcoords(:,1),handles.sdcoords(:,2),handles.sdcoords(:,3),'bx');
-end
+    data=guidata(h);
+    if ~isempty(handles.sdcoords)
+        guidata(hObject,handles);
+        set(data.sources,  'String',cellstr(num2str(handles.sdcoords,'%.8f %.8f %.8f')));
+        set(data.detectors,'String',cellstr(num2str(handles.sdcoords,'%.8f %.8f %.8f')));
+        axes(data.mesh)
+        plot3(handles.sdcoords(:,1),handles.sdcoords(:,2),handles.sdcoords(:,3),'ro');
+        plot3(handles.sdcoords(:,1),handles.sdcoords(:,2),handles.sdcoords(:,3),'bx');
+    end
 end
 
 foo = sprintf('clear save_fn\n%%--------------------%%\n');
