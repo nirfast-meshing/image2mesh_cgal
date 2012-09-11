@@ -529,6 +529,12 @@ else
     mat = ones(size(e,1),1);
 end
 
+if size(e,2) > 4
+    mat = e(:,5);
+else
+    mat = ones(size(e,1),1);
+end
+
 % Ask if user wants to optimize quality
 [junk optimize_flag] = optimize_mesh_gui;
 
