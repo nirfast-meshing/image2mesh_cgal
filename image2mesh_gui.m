@@ -519,26 +519,19 @@ foo = '[e p] = RunCGALMeshGenerator(mask,param);';
 if ~batch, eval(foo); end
 content{end+1} = foo;
 
-foo = 'q1 = simpqual(p, e, ''Min_Sin_Dihedral'');';
+foo = sprintf('%s, %s; else, %s; end\n', ...
+    'if size(e,2) > 4', 'mat = e(:,5)', 'mat = ones(size(e,1),1)');
 if ~batch, eval(foo); end
 content{end+1} = foo;
-
-if size(e,2) > 4
-    mat = e(:,5);
-else
-    mat = ones(size(e,1),1);
-end
-
-if size(e,2) > 4
-    mat = e(:,5);
-else
-    mat = ones(size(e,1),1);
-end
 
 % Ask if user wants to optimize quality
 [junk optimize_flag] = optimize_mesh_gui;
 
 if optimize_flag
+    foo = 'q1 = simpqual(p, e, ''Min_Sin_Dihedral'');';
+    if ~batch, eval(foo); end
+    content{end+1} = foo;
+
     foo = ['[genmesh.ele genmesh.node mat] = ' ...
         'call_improve_mesh_use_stellar(e, p);'];
     if ~batch, eval(foo); end
@@ -551,14 +544,14 @@ else
     if ~batch, eval(foo); end
     content{end+1} = foo;
 end
-foo = sprintf('%s\n',...
+foo = sprintf('%s',...
     'genmesh.ele(:,5) = mat; genmesh.nnpe = 4; genmesh.dim = 3;');
 if ~batch, eval(foo); end
 content{end+1} = foo;
 
 if optimize_flag
     foo = sprintf(['\n%s\n%s\n%s\n%s\n%s\n%s\n'...
-        '%s\n%s\n%s\n%s\n%s\n%s\n%s\n'],...
+        '%s\n%s\n%s\n%s\n%s\n%s\n%s'],...
         'figure; subplot(1,2,1);','hist(q1,30);',...
         'xlabel(''Min sin(dihedral angles)'')',...
         'h = findobj(gca,''Type'',''patch'');',...
