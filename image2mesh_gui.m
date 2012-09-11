@@ -702,6 +702,41 @@ for i=1:4 % nnpe
 end
 
 
+function [ele node newr] = call_improve_mesh_use_stellar(e, p)
+if size(e,2) > 4
+    region_ids = unique(e(:,5));
+elseif size(e,2) == 4
+    region_ids = ones(size(e,1),1);
+    e(:,5) = region_ids;
+else
+    error('Mesh needs to be tetrahedral.');
+end
+if min(region_ids)==0, region_ids=region_ids+1; end
+
+oldr = zeros(size(p,1),1);
+for i=1:length(region_ids)
+    relem = e(e(:,5)==region_ids(i),:);
+    rnodes = unique([relem(:,1);relem(:,2);relem(:,3);relem(:,4)]);
+    oldr(rnodes) = region_ids(i);
+end
+tic;
+config.qualmeasure = 0;
+[ie ip] = improve_mesh_use_stellar(e(:,1:4), p, config);
+t1 = toc;
+config.qualmeasure = 2;
+[ie ip] = improve_mesh_use_stellar(e(:,1:4), p, config);
+t2 = toc;
+fprintf('%f vs %f\n',t1,t2);
+
+tic;
+dist = dist2(ip, p);
+toc
+[foo idx] = sort(dist,2,'ascend');
+newr = oldr(idx);
+assert(length(newr) == length(oldr));
+ele = ie;
+node = ip;
+
 function outputfn_Callback(hObject, eventdata, handles)
 % hObject    handle to outputfn (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
