@@ -24,6 +24,7 @@ tmpinrfn  = fullfile(tmppath,'._cgal_mesher.inr');
 cgalparam_fn = fullfile(tmppath,'._criteria.txt');
 
 savefn = add_extension(tmpinrfn,'.inr');
+mask = uint16(mask);
 saveinr(mask,savefn,param);
 
 % Set up the necessary parameters for meshing
