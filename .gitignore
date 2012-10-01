@@ -1,1 +1,6 @@
 *.m~
+CMakeCache.txt
+CMakeFiles
+Makefile
+cmake_install.cmake
+image2mesh_cgal
