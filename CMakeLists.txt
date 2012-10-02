@@ -22,6 +22,7 @@ if ( CGAL_FOUND )
   include( CGAL_CreateSingleSourceCGALProgram )
 
   create_single_source_cgal_program( "image2mesh_cgal.cpp" )
+  add_definitions(-fopenmp)
 
 else()
 

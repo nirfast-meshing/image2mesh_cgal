@@ -12,6 +12,10 @@
 #include <vector>
 #include <map>
 
+#ifdef _OPENMP
+#include <omp.h>
+#endif
+
 // Domain
 typedef CGAL::Exact_predicates_inexact_constructions_kernel K;
 typedef CGAL::Labeled_image_mesh_domain_3<CGAL::Image_3,K> Mesh_domain;
@@ -28,7 +32,8 @@ typedef Mesh_criteria::Facet_criteria FacetCriteria;
 typedef Mesh_criteria::Cell_criteria CellCriteria;
 
 typedef Mesh_domain::Point_3 PointType;
-typedef Mesh_domain::Point_3 Point_3;
+// typedef Mesh_domain::Point_3 Point_3;
+typedef Mesh_domain::Point_3 shit;
 
 // To avoid verbose function and named parameters call
 using namespace CGAL::parameters;
@@ -37,54 +42,57 @@ using namespace CGAL::parameters;
 // criterial.txt is a text file containing setting for mesh sizes and refirement options.
 
 template<typename Mesh_domain, typename OutputIterator>
-void ConstructSeedPoints(const CGAL::Image_3 image, const Mesh_domain* domain, const std::map<Index, double>& lengths, OutputIterator pts) {
-	typedef typename MeshDomain::Point_3 PointType;
+void ConstructSeedPoints(const CGAL::Image_3& image, const Mesh_domain* domain, const std::map<int, double>& lengths, OutputIterator pts) {
 
-  Point_3 origin = image->GetGeometry()->GetOrigin();
-  Point_3 endPoint = image->GetGeometry()->GetCornerPoint(7);
+    // typedef typename Mesh_domain::Point_3 PointType;
 
-  for (SeedPointDistanceToLabelsMap::const_iterator iter = lengths.begin();
-       iter != lengths.end(); ++iter)
-  {
-    const std::set<mitk::LabeledImageToTetrahedralGridFilter::LabelType>& labels = iter->second;
+    // Point_3 origin = image.GetGeometry()->GetOrigin();
+    // Point_3 endPoint = image.GetGeometry()->GetCornerPoint(7);
+    PointType origin = PointType(0., 0., 0.);
+    PointType endPoint = PointType(image.vx()*image.xdim(), image.vy()*image.ydim(), image.vz()*image.zdim());
 
-    int xCount = (endPoint[0] - origin[0]) / iter->first;
-    std::vector<std::vector<std::pair<Point_3,mitk::LabeledImageToTetrahedralGridFilter::LabelType> > > seedPoints(omp_get_max_threads());
-    for (std::size_t i = 0; i < seedPoints.size(); ++i)
+    for (std::map<int, double>::const_iterator iter = lengths.begin();
+         iter != lengths.end(); ++iter)
     {
-      seedPoints[i].reserve(1000);
-    }
+        const int labels = iter->first;
 
-    #pragma omp parallel for
-    for (int i = 0; i < xCount; ++i)
-    {
-      Point_3 seedPointCandidate = origin;
-      seedPointCandidate[0] = origin[0] + i * iter->first;
-      while (seedPointCandidate[1] < endPoint[1])
-      {
-        seedPointCandidate[2] = origin[2];
-        while (seedPointCandidate[2] < endPoint[2])
-        {
-          mitk::LabeledImageToTetrahedralGridFilter::LabelType label = const_cast<mitk::Image*>(image)->GetPixelValueByWorldCoordinate(seedPointCandidate);
-          if (label != 0 && labels.find(label) != labels.end())
-          {
-            seedPoints[omp_get_thread_num()].push_back(std::make_pair(seedPointCandidate, label));
-          }
-          seedPointCandidate[2] += iter->first;
+        int xCount = (endPoint[0] - origin[0]) / iter->second;
+        int num_threads = 1;
+        int thread_num = 0;
+        #ifdef _OPENMP
+        num_threads = omp_get_max_threads();
+        thread_num = omp_get_thread_num();
+        #endif
+        std::vector<std::vector<std::pair<PointType,int> > > seedPoints(num_threads);
+        for (std::size_t i = 0; i < seedPoints.size(); ++i) {
+          seedPoints[i].reserve(1000);
         }
-        seedPointCandidate[1] += iter->first;
-      }
-    }
+        #ifdef _OPENMP
+        #pragma omp parallel for
+        #endif
+        for (int i = 0; i < xCount; ++i) {
+            PointType seedPointCandidate = PointType(0., 0., 0.);
+            seedPointCandidate[0] = origin[0] + i * iter->second;
+            while (seedPointCandidate[1] < endPoint[1]) {
+                seedPointCandidate[2] = origin[2];
+                while (seedPointCandidate[2] < endPoint[2]) {
+                    int label = 1; //const_cast<CGAL::Image_3>(image).GetPixelValueByWorldCoordinate(seedPointCandidate);
+                    if (label != 0 && labels == label) {
+                        seedPoints[thread_num].push_back(std::make_pair(seedPointCandidate, label));
+                    }
+                    seedPointCandidate[2] += iter->second;
+                }
+                seedPointCandidate[1] += iter->second;
+            }
+        }
 
-    for (std::size_t i = 0; i < seedPoints.size(); ++i)
-    {
-      for (std::size_t j = 0; j < seedPoints[i].size(); ++j)
-      {
-        const Point_3& seedPoint = seedPoints[i][j].first;
-        *pts++ = std::make_pair(PointType(seedPoint[0], seedPoint[1], seedPoint[2]), domain->index_from_subdomain_index(seedPoints[i][j].second));
-      }
+        for (std::size_t i = 0; i < seedPoints.size(); ++i) {
+            for (std::size_t j = 0; j < seedPoints[i].size(); ++j) {
+                const PointType& seedPoint = seedPoints[i][j].first;
+                *pts++ = std::make_pair(PointType(seedPoint[0], seedPoint[1], seedPoint[2]), domain->index_from_subdomain_index(seedPoints[i][j].second));
+            }
+        }
     }
-  }
 }
 
 int main(int argc, char *argv[])
@@ -160,14 +168,14 @@ int main(int argc, char *argv[])
 		CellCriteria cell_criteria(cell_radius_edge, size);
 		Mesh_criteria mesh_criteria(facet_criteria, cell_criteria);
 
-		typedef std::vector<std::pair<Point_3, Index> > initial_points_vector;
+		typedef std::vector<std::pair<PointType, Index> > initial_points_vector;
 		typedef initial_points_vector::iterator Ipv_iterator;
 		typedef C3t3::Vertex_handle Vertex_handle;
 
 		// Initialize c3t3
   		C3t3 c3t3;
 
-		std::map<Index, double> subdomain_label_size;
+		std::map<int, double> subdomain_label_size;
 		subdomain_label_size.insert(std::make_pair(special_subdomain_label, special_size));
 
 		initial_points_vector initial_points;
