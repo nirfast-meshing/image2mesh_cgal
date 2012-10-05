@@ -6,3 +6,8 @@ cmake_install.cmake
 image2mesh_cgal
 build
 *.ninja*
+*.o
+criteria.txt
+mac32.ele
+mac32.node
+out.mesh
