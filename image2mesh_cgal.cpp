@@ -31,9 +31,9 @@ typedef CGAL::Mesh_constant_domain_field_3<Mesh_domain::R,
 typedef Mesh_criteria::Facet_criteria FacetCriteria;
 typedef Mesh_criteria::Cell_criteria CellCriteria;
 
-typedef Mesh_domain::Point_3 PointType;
-// typedef Mesh_domain::Point_3 Point_3;
-typedef Mesh_domain::Point_3 shit;
+typedef Mesh_domain::Point_3 Point_3;
+typedef std::std::vector<double> PointType;
+// typedef Mesh_domain::Point_3 shit;
 
 // To avoid verbose function and named parameters call
 using namespace CGAL::parameters;
@@ -48,8 +48,8 @@ void ConstructSeedPoints(const CGAL::Image_3& image, const Mesh_domain* domain, 
 
     // Point_3 origin = image.GetGeometry()->GetOrigin();
     // Point_3 endPoint = image.GetGeometry()->GetCornerPoint(7);
-    PointType origin = PointType(0., 0., 0.);
-    PointType endPoint = PointType(image.vx()*image.xdim(), image.vy()*image.ydim(), image.vz()*image.zdim());
+    PointType origin = {0., 0., 0.};
+    PointType endPoint = {image.vx()*image.xdim(), image.vy()*image.ydim(), image.vz()*image.zdim()};
 
     for (std::map<int, double>::const_iterator iter = lengths.begin();
          iter != lengths.end(); ++iter)
@@ -71,13 +71,14 @@ void ConstructSeedPoints(const CGAL::Image_3& image, const Mesh_domain* domain, 
         #pragma omp parallel for
         #endif
         for (int i = 0; i < xCount; ++i) {
-            PointType seedPointCandidate = PointType(0., 0., 0.);
+        	PointType seedPointCandidate = {0., 0., 0.};
             seedPointCandidate[0] = origin[0] + i * iter->second;
             while (seedPointCandidate[1] < endPoint[1]) {
                 seedPointCandidate[2] = origin[2];
                 while (seedPointCandidate[2] < endPoint[2]) {
                     int label = 1; //const_cast<CGAL::Image_3>(image).GetPixelValueByWorldCoordinate(seedPointCandidate);
                     if (label != 0 && labels == label) {
+                    	// static const PointType foo(seedPointCandidate[0], seedPointCandidate[1], seedPointCandidate[2]);
                         seedPoints[thread_num].push_back(std::make_pair(seedPointCandidate, label));
                     }
                     seedPointCandidate[2] += iter->second;
@@ -89,7 +90,7 @@ void ConstructSeedPoints(const CGAL::Image_3& image, const Mesh_domain* domain, 
         for (std::size_t i = 0; i < seedPoints.size(); ++i) {
             for (std::size_t j = 0; j < seedPoints[i].size(); ++j) {
                 const PointType& seedPoint = seedPoints[i][j].first;
-                *pts++ = std::make_pair(PointType(seedPoint[0], seedPoint[1], seedPoint[2]), domain->index_from_subdomain_index(seedPoints[i][j].second));
+                *pts++ = std::make_pair(Point_3(seedPoint[0], seedPoint[1], seedPoint[2]), domain->index_from_subdomain_index(seedPoints[i][j].second));
             }
         }
     }
@@ -168,7 +169,7 @@ int main(int argc, char *argv[])
 		CellCriteria cell_criteria(cell_radius_edge, size);
 		Mesh_criteria mesh_criteria(facet_criteria, cell_criteria);
 
-		typedef std::vector<std::pair<PointType, Index> > initial_points_vector;
+		typedef std::vector<std::pair<Point_3, Index> > initial_points_vector;
 		typedef initial_points_vector::iterator Ipv_iterator;
 		typedef C3t3::Vertex_handle Vertex_handle;
 
