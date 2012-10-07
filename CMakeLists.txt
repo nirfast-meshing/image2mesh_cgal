@@ -21,9 +21,10 @@ if ( CGAL_FOUND )
 
   include( CGAL_CreateSingleSourceCGALProgram )
 
-  create_single_source_cgal_program( "image2mesh_cgal.cpp" )
-  add_definitions(-fopenmp)
+  add_definitions(-fopenmp -std=c++11 -g)
 
+  create_single_source_cgal_program( "image2mesh_cgal.cpp" )
+  target_link_libraries(image2mesh_cgal gomp)
 else()
 
     message(STATUS "This program requires the CGAL library, and will not be compiled.")

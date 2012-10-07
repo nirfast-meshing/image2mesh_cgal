@@ -11,6 +11,7 @@
 
 #include <vector>
 #include <map>
+#include <algorithm>
 
 #ifdef _OPENMP
 #include <omp.h>
@@ -32,12 +33,13 @@ typedef Mesh_criteria::Facet_criteria FacetCriteria;
 typedef Mesh_criteria::Cell_criteria CellCriteria;
 
 typedef Mesh_domain::Point_3 Point_3;
-typedef std::std::vector<double> PointType;
+typedef std::vector<double> PointType;
 // typedef Mesh_domain::Point_3 shit;
 
 // To avoid verbose function and named parameters call
 using namespace CGAL::parameters;
-
+using std::min;
+using std::max;
 // Usage: image2mesh_cgal inputstack.inr criteria.txt
 // criterial.txt is a text file containing setting for mesh sizes and refirement options.
 
@@ -56,7 +58,7 @@ void ConstructSeedPoints(const CGAL::Image_3& image, const Mesh_domain* domain, 
     {
         const int labels = iter->first;
 
-        int xCount = (endPoint[0] - origin[0]) / iter->second;
+        int xCount = static_cast<int>( (endPoint[0] - origin[0]) / iter->second );
         int num_threads = 1;
         int thread_num = 0;
         #ifdef _OPENMP
@@ -76,9 +78,22 @@ void ConstructSeedPoints(const CGAL::Image_3& image, const Mesh_domain* domain, 
             while (seedPointCandidate[1] < endPoint[1]) {
                 seedPointCandidate[2] = origin[2];
                 while (seedPointCandidate[2] < endPoint[2]) {
-                    int label = 1; //const_cast<CGAL::Image_3>(image).GetPixelValueByWorldCoordinate(seedPointCandidate);
+                    // Get label value of current candidate
+                    static const unsigned int xi = static_cast<unsigned int>( (seedPointCandidate[0] - origin[0]) / image.vx() );
+                    static const unsigned int yi = static_cast<unsigned int>( (seedPointCandidate[1] - origin[1]) / image.vy() );
+                    static const unsigned int zi = static_cast<unsigned int>( (seedPointCandidate[2] - origin[2]) / image.vz() );
+                    static unsigned int I = image.ydim() - yi;
+                    I = std::min(0U, I); I = std::max(image.ydim(), I);
+                    static unsigned int J = xi;
+                    J = std::min(0U, J); J = std::max(image.xdim(), J);
+                    static unsigned int K = image.zdim() - zi;
+                    K = std::min(0U, K); K = std::max(image.zdim(), K);
+
+                    int64_t idx = I*image.ydim() + J + K*(image.xdim()*image.ydim());
+                    CGAL_assertion( idx<(image.xdim() * image.ydim() * image.zdim()) && idx>0 );
+                    const unsigned int *data = (const unsigned int *)image.data();
+                    unsigned int label = *(data+idx);
                     if (label != 0 && labels == label) {
-                    	// static const PointType foo(seedPointCandidate[0], seedPointCandidate[1], seedPointCandidate[2]);
                         seedPoints[thread_num].push_back(std::make_pair(seedPointCandidate, label));
                     }
                     seedPointCandidate[2] += iter->second;
@@ -165,7 +180,7 @@ int main(int argc, char *argv[])
 		Sizing_field facetRadii(general_cell_size);
 		facetRadii.set_size(special_size, volume_dimension,
 		                    domain.index_from_subdomain_index(special_subdomain_label));
-		FacetCriteria facet_criteria(facet_angle,facetRadii,facet_distance);
+		FacetCriteria facet_criteria(facet_angle, facetRadii, facet_distance);
 		CellCriteria cell_criteria(cell_radius_edge, size);
 		Mesh_criteria mesh_criteria(facet_criteria, cell_criteria);
 
