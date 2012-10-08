@@ -29,7 +29,8 @@ if ~(isa(mask,'uint8') || isa(mask,'uint16') || ...
     warning('image2mesh:UnsupportedType','Converting image to uint8 type');
     mask = uint8(mask);
 end
-saveinr(mask,savefn,param);
+write_row_major = false;
+saveinr(mask,savefn,param,write_row_major);
 
 % Set up the necessary parameters for meshing
 facet_angle = 25; facet_size = 3; facet_distance = 2;

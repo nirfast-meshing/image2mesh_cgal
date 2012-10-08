@@ -1,4 +1,5 @@
 #include <CGAL/Exact_predicates_inexact_constructions_kernel.h>
+//#include <CGAL/Exact_predicates_exact_constructions_kernel.h>
 
 #include <CGAL/Mesh_triangulation_3.h>
 #include <CGAL/Mesh_complex_3_in_triangulation_3.h>
@@ -8,6 +9,7 @@
 #include <CGAL/Labeled_image_mesh_domain_3.h>
 #include <CGAL/make_mesh_3.h>
 #include <CGAL/Image_3.h>
+#include <CGAL/ImageIO.h>
 
 #include <vector>
 #include <map>
@@ -17,9 +19,12 @@
 #ifdef _OPENMP
 #include <omp.h>
 #endif
+#include <inttypes.h>
+#define __STDC_FORMAT_MACROS
 
 // Domain
 typedef CGAL::Exact_predicates_inexact_constructions_kernel K;
+//typedef CGAL::Exact_predicates_exact_constructions_kernel K;
 typedef CGAL::Labeled_image_mesh_domain_3<CGAL::Image_3,K> Mesh_domain;
 typedef Mesh_domain::Index Index;
 // Triangulation
@@ -58,6 +63,7 @@ void ConstructSeedPoints(const CGAL::Image_3& image, const Mesh_domain* domain, 
     endPoint.push_back(image.vz()*image.zdim());
 
     //std::set<int> foo;
+    uint64_t counter = 0;
     for (std::map<int, double>::const_iterator iter = lengths.begin();
          iter != lengths.end(); ++iter)
     {
@@ -96,10 +102,13 @@ void ConstructSeedPoints(const CGAL::Image_3& image, const Mesh_domain* domain, 
                     //~ K = std::max(0U, K); K = std::min(image.zdim(), K);
 //~ 
                     //~ int64_t idx = I*image.ydim() + J + K*(image.xdim()*image.ydim());
-                    int label = image.labellized_trilinear_interpolation(seedPointCandidate[0], seedPointCandidate[1], seedPointCandidate[0], 0);
+                    ++counter;
+                    printf("i: %d, counter: %"PRIu64"\n", i, counter);
+                    uint64_t label = image.labellized_trilinear_interpolation(
+                            seedPointCandidate[0], seedPointCandidate[1], seedPointCandidate[0],0);
 
                     std::cout << "label is " << label << std::endl;
-                    std::cout << "i is " << i << std::endl;
+
                     printf("x,y,z = %f, %f, %f\n", seedPointCandidate[0], seedPointCandidate[1], seedPointCandidate[2]);
                     // std::cout << "returned is " <<  << std::endl;
 //                    if ( !(idx<(image.xdim() * image.ydim() * image.zdim()) && idx>0) ) {
