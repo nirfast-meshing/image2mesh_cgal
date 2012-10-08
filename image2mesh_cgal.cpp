@@ -57,7 +57,7 @@ void ConstructSeedPoints(const CGAL::Image_3& image, const Mesh_domain* domain, 
     endPoint.push_back(image.vy()*image.ydim());
     endPoint.push_back(image.vz()*image.zdim());
 
-    std::set<int> foo;
+    //std::set<int> foo;
     for (std::map<int, double>::const_iterator iter = lengths.begin();
          iter != lengths.end(); ++iter)
     {
@@ -85,20 +85,21 @@ void ConstructSeedPoints(const CGAL::Image_3& image, const Mesh_domain* domain, 
                 seedPointCandidate[2] = origin[2];
                 while (seedPointCandidate[2] < endPoint[2]) {
                     // Get label value of current candidate
-                    static const unsigned int xi = static_cast<unsigned int>( (seedPointCandidate[0] - origin[0]) / image.vx() );
-                    static const unsigned int yi = static_cast<unsigned int>( (seedPointCandidate[1] - origin[1]) / image.vy() );
-                    static const unsigned int zi = static_cast<unsigned int>( (seedPointCandidate[2] - origin[2]) / image.vz() );
-                    static unsigned int I = image.ydim() - yi;
-                    I = std::max(0U, I); I = std::min(image.ydim(), I);
-                    static unsigned int J = xi;
-                    J = std::max(0U, J); J = std::min(image.xdim(), J);
-                    static unsigned int K = image.zdim() - zi;
-                    K = std::max(0U, K); K = std::min(image.zdim(), K);
-
-                    int64_t idx = I*image.ydim() + J + K*(image.xdim()*image.ydim());
+                    //~ static const unsigned int xi = static_cast<unsigned int>( (seedPointCandidate[0] - origin[0]) / image.vx() );
+                    //~ static const unsigned int yi = static_cast<unsigned int>( (seedPointCandidate[1] - origin[1]) / image.vy() );
+                    //~ static const unsigned int zi = static_cast<unsigned int>( (seedPointCandidate[2] - origin[2]) / image.vz() );
+                    //~ static unsigned int I = image.ydim() - yi;
+                    //~ I = std::max(0U, I); I = std::min(image.ydim(), I);
+                    //~ static unsigned int J = xi;
+                    //~ J = std::max(0U, J); J = std::min(image.xdim(), J);
+                    //~ static unsigned int K = image.zdim() - zi;
+                    //~ K = std::max(0U, K); K = std::min(image.zdim(), K);
+//~ 
+                    //~ int64_t idx = I*image.ydim() + J + K*(image.xdim()*image.ydim());
                     int label = image.labellized_trilinear_interpolation(seedPointCandidate[0], seedPointCandidate[1], seedPointCandidate[0], 0);
 
                     std::cout << "label is " << label << std::endl;
+                    std::cout << "i is " << i << std::endl;
                     printf("x,y,z = %f, %f, %f\n", seedPointCandidate[0], seedPointCandidate[1], seedPointCandidate[2]);
                     // std::cout << "returned is " <<  << std::endl;
 //                    if ( !(idx<(image.xdim() * image.ydim() * image.zdim()) && idx>0) ) {
@@ -116,7 +117,9 @@ void ConstructSeedPoints(const CGAL::Image_3& image, const Mesh_domain* domain, 
 //                    const unsigned int *data = (const unsigned int *)image.data();
 //                    unsigned int label = *(data+idx);
                     if (label != 0 && labels == label) {
-                        foo.insert(label);
+                        //foo.insert(label);
+                        std::cout << "inserting a label\n";
+                        std::cout.flush();
                         seedPoints[thread_num].push_back(std::make_pair(seedPointCandidate, label));
                     }
                     seedPointCandidate[2] += iter->second;
@@ -124,10 +127,12 @@ void ConstructSeedPoints(const CGAL::Image_3& image, const Mesh_domain* domain, 
                 seedPointCandidate[1] += iter->second;
             }
         }
-        std::cout << "len of foo " << foo.size() << std::endl;
-        for (std::set<int>::const_iterator it=foo.begin(); it!=foo.end(); ++it) {
-            std::cout << "--> " << *it << std::endl;
-        }
+        //std::cout << "len of foo " << foo.size() << std::endl;
+        //for (std::set<int>::const_iterator it=foo.begin(); it!=foo.end(); ++it) {
+          //  std::cout << "--> " << *it << std::endl;
+        //}
+        std::cout << "inserting a cgal points\n";
+                        std::cout.flush();
         for (std::size_t i = 0; i < seedPoints.size(); ++i) {
             for (std::size_t j = 0; j < seedPoints[i].size(); ++j) {
                 const PointType& seedPoint = seedPoints[i][j].first;
@@ -200,6 +205,7 @@ int main(int argc, char *argv[])
 	Sizing_field size(general_cell_size);
 	if (special_subdomain_label) {
 		std::cout << " Refining domain with label ID: " << special_subdomain_label << std::endl;
+        std::cout.flush();
 
 		size.set_size(special_size, volume_dimension,
 		              domain.index_from_subdomain_index(special_subdomain_label));
@@ -225,8 +231,10 @@ int main(int argc, char *argv[])
 
 		if (initial_points.empty()) {
 			domain.construct_initial_points_object()(std::back_inserter(initial_points));
-			volume_dimension = 2;
+			volume_dimension = 3;
 		}
+        std::cout << "inserting nodes\n";
+        std::cout.flush();
 
 		for (Ipv_iterator it=initial_points.begin(); it!=initial_points.end(); ++it) {
 			Vertex_handle v = c3t3.triangulation().insert(it->first);
@@ -236,6 +244,8 @@ int main(int argc, char *argv[])
 			}
 		}
 		CGAL_assertion(c3t3.triangulation().dimension() == 3);
+        std::cout << "generating mesh\n";
+        std::cout.flush();
 		CGAL::refine_mesh_3(c3t3, domain, mesh_criteria, CGAL::parameters::no_reset_c3t3());
 		std::ofstream medit_file(outfn.c_str());
 		c3t3.output_to_medit(medit_file);
