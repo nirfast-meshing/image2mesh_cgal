@@ -24,10 +24,8 @@ tmpinrfn  = fullfile(tmppath,'._cgal_mesher.inr');
 cgalparam_fn = fullfile(tmppath,'._criteria.txt');
 
 savefn = add_extension(tmpinrfn,'.inr');
-if ~(isa(mask,'uint8') || isa(mask,'uint16') || ...
-        isa(mask,'single') || isa(mask,'double'))
-    warning('image2mesh:UnsupportedType','Converting image to double type');
-    mask = double(mask);
+if ~(isa(mask,'uint8') || isa(mask,'uint16'))
+    error('image2mesh_cgal:UnsupportedType: %s',class(mask));
 end
 saveinr(mask,savefn,param);
 

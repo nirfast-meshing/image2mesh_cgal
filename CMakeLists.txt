@@ -20,11 +20,11 @@ if ( CGAL_FOUND )
   include( ${CGAL_USE_FILE} )
 
   include( CGAL_CreateSingleSourceCGALProgram )
-
-  add_definitions(-fopenmp -std=c++11 -g)
-
+  add_definitions(-frounding-math -std=c++11 -g)
+  set(CMAKE_BUILD_TYPE Debug)
   create_single_source_cgal_program( "image2mesh_cgal.cpp" )
-  target_link_libraries(image2mesh_cgal gomp)
+
+#  target_link_libraries(image2mesh_cgal omp)
 else()
 
     message(STATUS "This program requires the CGAL library, and will not be compiled.")

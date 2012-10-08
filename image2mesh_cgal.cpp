@@ -12,6 +12,7 @@
 #include <vector>
 #include <map>
 #include <algorithm>
+#include <set>
 
 #ifdef _OPENMP
 #include <omp.h>
@@ -50,9 +51,13 @@ void ConstructSeedPoints(const CGAL::Image_3& image, const Mesh_domain* domain, 
 
     // Point_3 origin = image.GetGeometry()->GetOrigin();
     // Point_3 endPoint = image.GetGeometry()->GetCornerPoint(7);
-    PointType origin = {0., 0., 0.};
-    PointType endPoint = {image.vx()*image.xdim(), image.vy()*image.ydim(), image.vz()*image.zdim()};
+    PointType origin; origin.push_back(0.); origin.push_back(0.); origin.push_back(0.);
+    PointType endPoint;
+    endPoint.push_back(image.vx()*image.xdim());
+    endPoint.push_back(image.vy()*image.ydim());
+    endPoint.push_back(image.vz()*image.zdim());
 
+    std::set<int> foo;
     for (std::map<int, double>::const_iterator iter = lengths.begin();
          iter != lengths.end(); ++iter)
     {
@@ -73,7 +78,8 @@ void ConstructSeedPoints(const CGAL::Image_3& image, const Mesh_domain* domain, 
         #pragma omp parallel for
         #endif
         for (int i = 0; i < xCount; ++i) {
-        	PointType seedPointCandidate = {0., 0., 0.};
+        	PointType seedPointCandidate;
+            seedPointCandidate.push_back(0.); seedPointCandidate.push_back(0.); seedPointCandidate.push_back(0.);
             seedPointCandidate[0] = origin[0] + i * iter->second;
             while (seedPointCandidate[1] < endPoint[1]) {
                 seedPointCandidate[2] = origin[2];
@@ -83,17 +89,34 @@ void ConstructSeedPoints(const CGAL::Image_3& image, const Mesh_domain* domain, 
                     static const unsigned int yi = static_cast<unsigned int>( (seedPointCandidate[1] - origin[1]) / image.vy() );
                     static const unsigned int zi = static_cast<unsigned int>( (seedPointCandidate[2] - origin[2]) / image.vz() );
                     static unsigned int I = image.ydim() - yi;
-                    I = std::min(0U, I); I = std::max(image.ydim(), I);
+                    I = std::max(0U, I); I = std::min(image.ydim(), I);
                     static unsigned int J = xi;
-                    J = std::min(0U, J); J = std::max(image.xdim(), J);
+                    J = std::max(0U, J); J = std::min(image.xdim(), J);
                     static unsigned int K = image.zdim() - zi;
-                    K = std::min(0U, K); K = std::max(image.zdim(), K);
+                    K = std::max(0U, K); K = std::min(image.zdim(), K);
 
                     int64_t idx = I*image.ydim() + J + K*(image.xdim()*image.ydim());
-                    CGAL_assertion( idx<(image.xdim() * image.ydim() * image.zdim()) && idx>0 );
-                    const unsigned int *data = (const unsigned int *)image.data();
-                    unsigned int label = *(data+idx);
+                    int label = 0;
+
+                    // std::cout << "label is " << label << std::endl;
+                    printf("x,y,z = %f, %f, %f\n", seedPointCandidate[0], seedPointCandidate[1], seedPointCandidate[2]);
+                    std::cout << "returned is " << image.labellized_trilinear_interpolation(seedPointCandidate[0], seedPointCandidate[1], seedPointCandidate[0], 0) << std::endl;
+//                    if ( !(idx<(image.xdim() * image.ydim() * image.zdim()) && idx>0) ) {
+//                        std::cout << "idx: " << idx << "\n" <<
+//                            "(xdim,ydim,zdim)= " << image.xdim() << ' ' << image.ydim() << ' ' << image.zdim() << '\n' <<
+//                            "(vx,vy,vz)= " << image.vx() << ' ' << image.vy() << ' ' << image.vz() << std::endl;
+//                        std::cout << "I,J,K: " << I << ' ' << J << ' ' << K << ' ' << std::endl;
+//                        std::cout << "i= " << i << std::endl;
+//                        const uint16_t *data = (const uint16_t *)image.data();
+//                        std::cout << *(data+0) << ' ' << *(data+(image.xdim()-1)*image.ydim()) << std::endl;
+//                        std::cout << *(data+(image.zdim()-1)*image.xdim()*image.ydim()) <<
+//                            ' ' << *(data+(image.zdim()-1)*image.xdim()*image.ydim()+(image.xdim()-1)*image.ydim()) << std::endl;
+//                        CGAL_assertion(false);
+//                    }
+//                    const unsigned int *data = (const unsigned int *)image.data();
+//                    unsigned int label = *(data+idx);
                     if (label != 0 && labels == label) {
+                        foo.insert(label);
                         seedPoints[thread_num].push_back(std::make_pair(seedPointCandidate, label));
                     }
                     seedPointCandidate[2] += iter->second;
@@ -101,7 +124,10 @@ void ConstructSeedPoints(const CGAL::Image_3& image, const Mesh_domain* domain, 
                 seedPointCandidate[1] += iter->second;
             }
         }
-
+        std::cout << "len of foo " << foo.size() << std::endl;
+        for (std::set<int>::const_iterator it=foo.begin(); it!=foo.end(); ++it) {
+            std::cout << "--> " << *it << std::endl;
+        }
         for (std::size_t i = 0; i < seedPoints.size(); ++i) {
             for (std::size_t j = 0; j < seedPoints[i].size(); ++j) {
                 const PointType& seedPoint = seedPoints[i][j].first;
