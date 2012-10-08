@@ -24,8 +24,10 @@ tmpinrfn  = fullfile(tmppath,'._cgal_mesher.inr');
 cgalparam_fn = fullfile(tmppath,'._criteria.txt');
 
 savefn = add_extension(tmpinrfn,'.inr');
-if ~(isa(mask,'uint8') || isa(mask,'uint16'))
-    error('image2mesh_cgal:UnsupportedType: %s',class(mask));
+if ~(isa(mask,'uint8') || isa(mask,'uint16') || ...
+        isa(mask,'single') || isa(mask,'double'))
+    warning('image2mesh:UnsupportedType','Converting image to uint8 type');
+    mask = uint8(mask);
 end
 saveinr(mask,savefn,param);
 
@@ -52,6 +54,11 @@ fprintf(fid,'%f\n',cell_size);
 fprintf(fid,'%d\n',special_subdomain_label);
 fprintf(fid,'%f\n',special_size);
 fclose(fid);
+
+
+warning('off','MATLAB:DELETE:FileNotFound');
+delete(tmpmeshfn);
+warning('on','MATLAB:DELETE:FileNotFound');
 
 % Run the executable
 syscommand = GetSystemCommand('image2mesh_cgal');
