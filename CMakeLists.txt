@@ -20,7 +20,7 @@ if ( CGAL_FOUND )
   include( ${CGAL_USE_FILE} )
 
   include( CGAL_CreateSingleSourceCGALProgram )
-  add_definitions(-frounding-math -std=c++11 -g)
+  add_definitions(-frounding-math -g)
   set(CMAKE_BUILD_TYPE Debug)
   create_single_source_cgal_program( "image2mesh_cgal.cpp" )
 

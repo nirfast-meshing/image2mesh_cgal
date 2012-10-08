@@ -96,11 +96,11 @@ void ConstructSeedPoints(const CGAL::Image_3& image, const Mesh_domain* domain, 
                     K = std::max(0U, K); K = std::min(image.zdim(), K);
 
                     int64_t idx = I*image.ydim() + J + K*(image.xdim()*image.ydim());
-                    int label = 0;
+                    int label = image.labellized_trilinear_interpolation(seedPointCandidate[0], seedPointCandidate[1], seedPointCandidate[0], 0);
 
-                    // std::cout << "label is " << label << std::endl;
+                    std::cout << "label is " << label << std::endl;
                     printf("x,y,z = %f, %f, %f\n", seedPointCandidate[0], seedPointCandidate[1], seedPointCandidate[2]);
-                    std::cout << "returned is " << image.labellized_trilinear_interpolation(seedPointCandidate[0], seedPointCandidate[1], seedPointCandidate[0], 0) << std::endl;
+                    // std::cout << "returned is " <<  << std::endl;
 //                    if ( !(idx<(image.xdim() * image.ydim() * image.zdim()) && idx>0) ) {
 //                        std::cout << "idx: " << idx << "\n" <<
 //                            "(xdim,ydim,zdim)= " << image.xdim() << ' ' << image.ydim() << ' ' << image.zdim() << '\n' <<
