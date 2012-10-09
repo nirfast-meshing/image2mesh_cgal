@@ -66,11 +66,13 @@ void ConstructSeedPoints(const CGAL::Image_3& image, const Mesh_domain* domain, 
 
     // Point_3 origin = image.GetGeometry()->GetOrigin();
     // Point_3 endPoint = image.GetGeometry()->GetCornerPoint(7);
-    PointType origin; origin.push_back(0.); origin.push_back(0.); origin.push_back(0.);
-    PointType endPoint;
-    endPoint.push_back(image.vx()*image.xdim());
-    endPoint.push_back(image.vy()*image.ydim());
-    endPoint.push_back(image.vz()*image.zdim());
+//    PointType origin; origin.push_back(0.); origin.push_back(0.); origin.push_back(0.);
+    double origin[3] = {0., 0., 0.};
+//    PointType endPoint;
+//    endPoint.push_back(image.vx()*image.xdim());
+//    endPoint.push_back(image.vy()*image.ydim());
+//    endPoint.push_back(image.vz()*image.zdim());
+    double endPoint[3] = {image.vx()*image.xdim(), image.vy()*image.ydim(), image.vz()*image.zdim()};
 
     //std::set<int> foo;
     uint64_t counter = 0;
@@ -86,7 +88,7 @@ void ConstructSeedPoints(const CGAL::Image_3& image, const Mesh_domain* domain, 
         num_threads = omp_get_max_threads();
         thread_num = omp_get_thread_num();
         #endif
-        std::vector<std::vector<std::pair<PointType,int> > > seedPoints(num_threads);
+        std::vector<std::vector<std::pair<double*,int> > > seedPoints(num_threads);
         for (std::size_t i = 0; i < seedPoints.size(); ++i) {
           seedPoints[i].reserve(1000);
         }
@@ -94,9 +96,9 @@ void ConstructSeedPoints(const CGAL::Image_3& image, const Mesh_domain* domain, 
         #pragma omp parallel for
         #endif
         for (int i = 0; i < xCount; ++i) {
-        	PointType seedPointCandidate;
-            seedPointCandidate.push_back(0.); seedPointCandidate.push_back(0.); seedPointCandidate.push_back(0.);
-            seedPointCandidate[0] = origin[0] + i * iter->second;
+        	double seedPointCandidate[3] = {origin[0] + i * iter->second, 0., 0.};
+//            seedPointCandidate.push_back(0.); seedPointCandidate.push_back(0.); seedPointCandidate.push_back(0.);
+//            seedPointCandidate[0] = origin[0] + i * iter->second;
             while (seedPointCandidate[1] < endPoint[1]) {
                 seedPointCandidate[2] = origin[2];
                 while (seedPointCandidate[2] < endPoint[2]) {
@@ -110,16 +112,14 @@ void ConstructSeedPoints(const CGAL::Image_3& image, const Mesh_domain* domain, 
                     //~ J = std::max(0U, J); J = std::min(image.xdim(), J);
                     //~ static unsigned int K = image.zdim() - zi;
                     //~ K = std::max(0U, K); K = std::min(image.zdim(), K);
-//~
                     //~ int64_t idx = I*image.ydim() + J + K*(image.xdim()*image.ydim());
                     ++counter;
                     printf("i: %d, counter: %"PRIu64"\n", i, counter);
+                    printf("x,y,z = %f, %f, %f\n", seedPointCandidate[0], seedPointCandidate[1], seedPointCandidate[2]);
                     uint64_t label = image.labellized_trilinear_interpolation(
-                            seedPointCandidate[0], seedPointCandidate[1], seedPointCandidate[0],0);
+                            seedPointCandidate[0], seedPointCandidate[1], seedPointCandidate[2],0);
 
                     std::cout << "label is " << label << std::endl;
-
-                    printf("x,y,z = %f, %f, %f\n", seedPointCandidate[0], seedPointCandidate[1], seedPointCandidate[2]);
                     // std::cout << "returned is " <<  << std::endl;
 //                    if ( !(idx<(image.xdim() * image.ydim() * image.zdim()) && idx>0) ) {
 //                        std::cout << "idx: " << idx << "\n" <<
@@ -154,7 +154,7 @@ void ConstructSeedPoints(const CGAL::Image_3& image, const Mesh_domain* domain, 
                         std::cout.flush();
         for (std::size_t i = 0; i < seedPoints.size(); ++i) {
             for (std::size_t j = 0; j < seedPoints[i].size(); ++j) {
-                const PointType& seedPoint = seedPoints[i][j].first;
+                const double* seedPoint = seedPoints[i][j].first;
                 *pts++ = std::make_pair(Point_3(seedPoint[0], seedPoint[1], seedPoint[2]), domain->index_from_subdomain_index(seedPoints[i][j].second));
             }
         }
