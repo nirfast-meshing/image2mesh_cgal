@@ -1,5 +1,12 @@
 #include <CGAL/Exact_predicates_inexact_constructions_kernel.h>
 //#include <CGAL/Exact_predicates_exact_constructions_kernel.h>
+// #include <CGAL/Exact_predicates_exact_constructions_kernel_with_sqrt.h>
+
+// #include <CGAL/Cartesian.h>
+// #include <CGAL/MP_Float.h>
+// #include <CGAL/Lazy_exact_nt.h>
+// #include <CGAL/Quotient.h>
+// #include <CGAL/Gmpq.h>
 
 #include <CGAL/Mesh_triangulation_3.h>
 #include <CGAL/Mesh_complex_3_in_triangulation_3.h>
@@ -24,7 +31,10 @@
 
 // Domain
 typedef CGAL::Exact_predicates_inexact_constructions_kernel K;
-//typedef CGAL::Exact_predicates_exact_constructions_kernel K;
+// typedef CGAL::Exact_predicates_exact_constructions_kernel_with_sqrt K;
+// typedef CGAL::Lazy_exact_nt<CGAL::Gmpq > NT;
+// typedef CGAL::Cartesian<NT> K;
+
 typedef CGAL::Labeled_image_mesh_domain_3<CGAL::Image_3,K> Mesh_domain;
 typedef Mesh_domain::Index Index;
 // Triangulation
@@ -100,7 +110,7 @@ void ConstructSeedPoints(const CGAL::Image_3& image, const Mesh_domain* domain, 
                     //~ J = std::max(0U, J); J = std::min(image.xdim(), J);
                     //~ static unsigned int K = image.zdim() - zi;
                     //~ K = std::max(0U, K); K = std::min(image.zdim(), K);
-//~ 
+//~
                     //~ int64_t idx = I*image.ydim() + J + K*(image.xdim()*image.ydim());
                     ++counter;
                     printf("i: %d, counter: %"PRIu64"\n", i, counter);
