@@ -214,11 +214,15 @@ int main(int argc, char *argv[])
 	else
 		outfn = "_tmp_image2mesh_cgal.mesh";
 
-	image.read(inrfn.c_str());
+	bool ret = image.read(inrfn.c_str());
+    if (ret) {
+        std::cout << " Read the image successfully\n";
+    }
 
 	// Domain
 	Mesh_domain domain(image);
-
+    
+    int label = image.labellized_trilinear_interpolation(0., 0., 57., 0);
 	// Sizing field: set global size to general_cell_size
 	// and special size (label special_subdomain_label) to special_size
 	Sizing_field size(general_cell_size);
@@ -226,6 +230,27 @@ int main(int argc, char *argv[])
 		std::cout << " Refining domain with label ID: " << special_subdomain_label << std::endl;
         std::cout.flush();
 
+    image.labellized_trilinear_interpolation(0.,0.,57.,0);
+    double endpoint[3] = {image.vx()*image.xdim(), image.vy()*image.ydim(), image.vz()*image.zdim()};
+    int count = endpoint[0] / 3;
+    uint64_t counter = 0;
+    for (int i = 0; i < count; ++i)
+    {
+        double seedCandid[3] = {0+i*3, 0., 0.};
+        while (seedCandid[1] < endpoint[1]) {
+          seedCandid[2] = 0.;
+          while (seedCandid[2] < endpoint[2]) {
+                ++counter;
+                printf("x,y,z = %f, %f, %f\n", seedCandid[0], seedCandid[1], seedCandid[2]);
+                printf("i: %d, counter: %"PRIu64"\n", i, counter);
+                uint64_t label = image.labellized_trilinear_interpolation(
+                                                                          seedCandid[0], seedCandid[1], seedCandid[2], 0);
+                printf("label is %"PRIu64"\n", label);
+                seedCandid[2] += 3;
+            }
+            seedCandid[1] += 3;
+        }
+    }
 		size.set_size(special_size, volume_dimension,
 		              domain.index_from_subdomain_index(special_subdomain_label));
 		Sizing_field facetRadii(general_cell_size);
