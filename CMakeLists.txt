@@ -20,11 +20,14 @@ if ( CGAL_FOUND )
   include( ${CGAL_USE_FILE} )
 
   include( CGAL_CreateSingleSourceCGALProgram )
-  add_definitions(-g)
-  set(CMAKE_BUILD_TYPE Debug)
+  #add_definitions(-O2)
+  set(CMAKE_BUILD_TYPE Release)
   create_single_source_cgal_program( "image2mesh_cgal.cpp" )
 
-#  target_link_libraries(image2mesh_cgal omp)
+  add_library(static_boost_system STATIC IMPORTED)
+  set_property(TARGET static_boost_system PROPERTY IMPORTED_LOCATION /usr/local/lib/libboost_system-mt.a)
+  target_link_libraries(image2mesh_cgal static_boost_system)
+  add_definitions(-Wl,-no-pie)
 else()
 
     message(STATUS "This program requires the CGAL library, and will not be compiled.")
