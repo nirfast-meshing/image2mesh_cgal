@@ -120,7 +120,7 @@ void ConstructSeedPoints(const CGAL::Image_3& image, const Mesh_domain* domain, 
                     //~ static unsigned int K = image.zdim() - zi;
                     //~ K = std::max(0U, K); K = std::min(image.zdim(), K);
                     //~ int64_t idx = I*image.ydim() + J + K*(image.xdim()*image.ydim());
-                    
+
                     //printf("i: %d, counter: %"PRIu64"\n", i, counter);
                     //printf("x,y,z = %f, %f, %f\n", seedPointCandidate[0], seedPointCandidate[1], seedPointCandidate[2]);
                     uint64_t label = image.labellized_trilinear_interpolation(
@@ -144,8 +144,8 @@ void ConstructSeedPoints(const CGAL::Image_3& image, const Mesh_domain* domain, 
 //                    unsigned int label = *(data+idx);
                     if (label != 0 && labels == label) {
                         //foo.insert(label);
-                        printf("inserting a labeled data point: %f, %f, %f\n", seedPointCandidate[0],seedPointCandidate[1],seedPointCandidate[2]);
-                        std::cout.flush();
+                        // printf("inserting a labeled data point: %f, %f, %f\n", seedPointCandidate[0],seedPointCandidate[1],seedPointCandidate[2]);
+                        // std::cout.flush();
                         PointType foo; foo.x = seedPointCandidate[0]; foo.y = seedPointCandidate[1]; foo.z = seedPointCandidate[2];
                         seedPoints[thread_num].push_back(std::make_pair(foo, label));
                         ++counter;
@@ -160,7 +160,7 @@ void ConstructSeedPoints(const CGAL::Image_3& image, const Mesh_domain* domain, 
         //for (std::set<int>::const_iterator it=foo.begin(); it!=foo.end(); ++it) {
           //  std::cout << "--> " << *it << std::endl;
         //}
-        std::cout << "inserting cgal points: " << counter << "\n";
+        std::cout << "Inserted total of " << counter << " Steiner points to meet sizing requirements." << std::endl;
                         std::cout.flush();
         for (std::set<int>::iterator i=_labels.begin(); i != _labels.end(); ++i)
         {
@@ -235,7 +235,7 @@ int main(int argc, char *argv[])
 
 	// Domain
 	Mesh_domain domain(image);
-    
+
     //int label = image.labellized_trilinear_interpolation(0., 0., 57., 0);
 	// Sizing field: set global size to general_cell_size
 	// and special size (label special_subdomain_label) to special_size
@@ -304,7 +304,18 @@ int main(int argc, char *argv[])
 		CGAL_assertion(c3t3.triangulation().dimension() == 3);
         std::cout << "generating mesh\n";
         std::cout.flush();
-		CGAL::refine_mesh_3(c3t3, domain, mesh_criteria, CGAL::parameters::no_reset_c3t3());
+		CGAL::refine_mesh_3(c3t3, domain, mesh_criteria, CGAL::parameters::no_reset_c3t3(), no_perturb(), no_exude());
+        std::cout << "optimizing mesh\n";
+        std::cout.flush();
+        CGAL::odt_optimize_mesh_3(c3t3, domain, time_limit=0);
+        std::cout << "perturbing mesh\n";
+        std::cout.flush();
+        CGAL::perturb_mesh_3(c3t3, domain, time_limit=0);
+        std::cout << "exuding sliver elements\n";
+        std::cout.flush();
+        CGAL::exude_mesh_3(c3t3, sliver_bound=15, time_limit=300);
+        std::cout << "writing mesh\n";
+        std::cout.flush();
 		std::ofstream medit_file(outfn.c_str());
 		c3t3.output_to_medit(medit_file);
 	}
