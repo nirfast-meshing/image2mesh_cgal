@@ -20,7 +20,7 @@ if ( CGAL_FOUND )
   include( ${CGAL_USE_FILE} )
 
   include( CGAL_CreateSingleSourceCGALProgram )
-  #add_definitions(-O2)
+  add_definitions(-O3)
   set(CMAKE_BUILD_TYPE Release)
   create_single_source_cgal_program( "image2mesh_cgal.cpp" )
 
