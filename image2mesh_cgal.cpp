@@ -160,11 +160,11 @@ void ConstructSeedPoints(const CGAL::Image_3& image, const Mesh_domain* domain, 
         //for (std::set<int>::const_iterator it=foo.begin(); it!=foo.end(); ++it) {
           //  std::cout << "--> " << *it << std::endl;
         //}
-        std::cout << "Inserted total of " << counter << " Steiner points to meet sizing requirements." << std::endl;
+        std::cout << " ..Mesh needs a total of " << counter << " Steiner points to meet sizing requirements." << std::endl;
                         std::cout.flush();
         for (std::set<int>::iterator i=_labels.begin(); i != _labels.end(); ++i)
         {
-            printf("label: %d\n", *i);
+            printf(" ..label: %d\n", *i);
         }
         for (std::size_t i = 0; i < seedPoints.size(); ++i) {
             for (std::size_t j = 0; j < seedPoints[i].size(); ++j) {
@@ -291,7 +291,7 @@ int main(int argc, char *argv[])
 			domain.construct_initial_points_object()(std::back_inserter(initial_points));
 			volume_dimension = 3;
 		}
-        std::cout << "inserting nodes\n";
+        std::cout << " ..inserting nodes\n";
         std::cout.flush();
 
 		for (Ipv_iterator it=initial_points.begin(); it!=initial_points.end(); ++it) {
@@ -302,19 +302,19 @@ int main(int argc, char *argv[])
 			}
 		}
 		CGAL_assertion(c3t3.triangulation().dimension() == 3);
-        std::cout << "generating mesh\n";
+        std::cout << " ..generating mesh\n";
         std::cout.flush();
 		CGAL::refine_mesh_3(c3t3, domain, mesh_criteria, CGAL::parameters::no_reset_c3t3(), no_perturb(), no_exude());
-        std::cout << "optimizing mesh\n";
+        std::cout << " ..optimizing mesh\n";
         std::cout.flush();
         CGAL::odt_optimize_mesh_3(c3t3, domain, time_limit=0);
-        std::cout << "perturbing mesh\n";
+        std::cout << " ..perturbing mesh\n";
         std::cout.flush();
         CGAL::perturb_mesh_3(c3t3, domain, time_limit=0);
-        std::cout << "exuding sliver elements\n";
+        std::cout << " ..exuding sliver elements\n";
         std::cout.flush();
         CGAL::exude_mesh_3(c3t3, sliver_bound=15, time_limit=300);
-        std::cout << "writing mesh\n";
+        std::cout << " ..writing mesh\n";
         std::cout.flush();
 		std::ofstream medit_file(outfn.c_str());
 		c3t3.output_to_medit(medit_file);
