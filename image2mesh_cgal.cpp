@@ -85,9 +85,10 @@ void ConstructSeedPoints(const CGAL::Image_3& image, const Mesh_domain* domain, 
     for (std::map<int, double>::const_iterator iter = lengths.begin();
          iter != lengths.end(); ++iter)
     {
-        const int labels = iter->first;
+        const int current_label = iter->first;
+        const double current_size = iter->second;
 
-        int xCount = static_cast<int>( (endPoint[0] - origin[0]) / iter->second );
+        int xCount = static_cast<int>( (endPoint[0] - origin[0]) / current_size );
         int num_threads = 1;
         int thread_num = 0;
         #ifdef _OPENMP
@@ -103,69 +104,32 @@ void ConstructSeedPoints(const CGAL::Image_3& image, const Mesh_domain* domain, 
         #pragma omp parallel for
         #endif
         for (int i = 0; i < xCount; ++i) {
-        	double seedPointCandidate[3] = {origin[0] + i * iter->second, 0., 0.};
-//            seedPointCandidate.push_back(0.); seedPointCandidate.push_back(0.); seedPointCandidate.push_back(0.);
-//            seedPointCandidate[0] = origin[0] + i * iter->second;
+        	double seedPointCandidate[3] = {origin[0] + i * current_size, 0., 0.};
             while (seedPointCandidate[1] < endPoint[1]) {
                 seedPointCandidate[2] = origin[2];
                 while (seedPointCandidate[2] < endPoint[2]) {
-                    // Get label value of current candidate
-                    //~ static const unsigned int xi = static_cast<unsigned int>( (seedPointCandidate[0] - origin[0]) / image.vx() );
-                    //~ static const unsigned int yi = static_cast<unsigned int>( (seedPointCandidate[1] - origin[1]) / image.vy() );
-                    //~ static const unsigned int zi = static_cast<unsigned int>( (seedPointCandidate[2] - origin[2]) / image.vz() );
-                    //~ static unsigned int I = image.ydim() - yi;
-                    //~ I = std::max(0U, I); I = std::min(image.ydim(), I);
-                    //~ static unsigned int J = xi;
-                    //~ J = std::max(0U, J); J = std::min(image.xdim(), J);
-                    //~ static unsigned int K = image.zdim() - zi;
-                    //~ K = std::max(0U, K); K = std::min(image.zdim(), K);
-                    //~ int64_t idx = I*image.ydim() + J + K*(image.xdim()*image.ydim());
-
-                    //printf("i: %d, counter: %"PRIu64"\n", i, counter);
-                    //printf("x,y,z = %f, %f, %f\n", seedPointCandidate[0], seedPointCandidate[1], seedPointCandidate[2]);
                     uint64_t label = image.labellized_trilinear_interpolation(
                             seedPointCandidate[0], seedPointCandidate[1], seedPointCandidate[2],(unsigned char)(0));
-
-                    //std::cout << "label is " << label << std::endl;
-                    // std::cout << "returned is " <<  << std::endl;
-//                    if ( !(idx<(image.xdim() * image.ydim() * image.zdim()) && idx>0) ) {
-//                        std::cout << "idx: " << idx << "\n" <<
-//                            "(xdim,ydim,zdim)= " << image.xdim() << ' ' << image.ydim() << ' ' << image.zdim() << '\n' <<
-//                            "(vx,vy,vz)= " << image.vx() << ' ' << image.vy() << ' ' << image.vz() << std::endl;
-//                        std::cout << "I,J,K: " << I << ' ' << J << ' ' << K << ' ' << std::endl;
-//                        std::cout << "i= " << i << std::endl;
-//                        const uint16_t *data = (const uint16_t *)image.data();
-//                        std::cout << *(data+0) << ' ' << *(data+(image.xdim()-1)*image.ydim()) << std::endl;
-//                        std::cout << *(data+(image.zdim()-1)*image.xdim()*image.ydim()) <<
-//                            ' ' << *(data+(image.zdim()-1)*image.xdim()*image.ydim()+(image.xdim()-1)*image.ydim()) << std::endl;
-//                        CGAL_assertion(false);
-//                    }
-//                    const unsigned int *data = (const unsigned int *)image.data();
-//                    unsigned int label = *(data+idx);
-                    if (label != 0 && labels == label) {
-                        //foo.insert(label);
-                        // printf("inserting a labeled data point: %f, %f, %f\n", seedPointCandidate[0],seedPointCandidate[1],seedPointCandidate[2]);
-                        // std::cout.flush();
-                        PointType foo; foo.x = seedPointCandidate[0]; foo.y = seedPointCandidate[1]; foo.z = seedPointCandidate[2];
+                    if (label != 0 && current_label == label) {
+                        PointType foo;
+                        foo.x = seedPointCandidate[0]; foo.y = seedPointCandidate[1]; foo.z = seedPointCandidate[2];
                         seedPoints[thread_num].push_back(std::make_pair(foo, label));
                         ++counter;
                         _labels.insert(label);
                     }
-                    seedPointCandidate[2] += iter->second;
+                    seedPointCandidate[2] += current_size;
                 }
-                seedPointCandidate[1] += iter->second;
+                seedPointCandidate[1] += current_size;
             }
         }
-        //std::cout << "len of foo " << foo.size() << std::endl;
-        //for (std::set<int>::const_iterator it=foo.begin(); it!=foo.end(); ++it) {
-          //  std::cout << "--> " << *it << std::endl;
-        //}
         std::cout << " ..Mesh needs a total of " << counter << " Steiner points to meet sizing requirements." << std::endl;
                         std::cout.flush();
+        std::cout << " ..labels refined are: ";
         for (std::set<int>::iterator i=_labels.begin(); i != _labels.end(); ++i)
         {
-            printf(" ..label: %d\n", *i);
+            printf(", %d", *i);
         }
+        printf("\n");
         for (std::size_t i = 0; i < seedPoints.size(); ++i) {
             for (std::size_t j = 0; j < seedPoints[i].size(); ++j) {
                 const PointType seedPoint = seedPoints[i][j].first;
@@ -215,13 +179,6 @@ int main(int argc, char *argv[])
 		cfs >> general_cell_size;
 		cfs >> special_subdomain_label;
 		cfs >> special_size;
-		/*std::cout << facet_angle << std::endl <<
-					 facet_size << std::endl <<
-					 facet_distance << std::endl <<
-					 cell_radius_edge << std::endl <<
-					 general_cell_size << std::endl <<
-					 special_subdomain_label << std::endl <<
-					special_size << std::endl;*/
 	}
 	if (argc >= 4)
 		outfn = argv[3];
@@ -236,35 +193,12 @@ int main(int argc, char *argv[])
 	// Domain
 	Mesh_domain domain(image);
 
-    //int label = image.labellized_trilinear_interpolation(0., 0., 57., 0);
 	// Sizing field: set global size to general_cell_size
 	// and special size (label special_subdomain_label) to special_size
 	Sizing_field size(general_cell_size);
 	if (special_subdomain_label) {
 		std::cout << " Refining domain with label ID: " << special_subdomain_label << std::endl;
         std::cout.flush();
-
-    /*image.labellized_trilinear_interpolation(0.,0.,57.,0);
-    double endpoint[3] = {image.vx()*image.xdim(), image.vy()*image.ydim(), image.vz()*image.zdim()};
-    int count = endpoint[0] / 3;
-    uint64_t counter = 0;
-    for (int i = 0; i < count; ++i)
-    {
-        double seedCandid[3] = {0+i*3, 0., 0.};
-        while (seedCandid[1] < endpoint[1]) {
-          seedCandid[2] = 0.;
-          while (seedCandid[2] < endpoint[2]) {
-                ++counter;
-                printf("x,y,z = %f, %f, %f\n", seedCandid[0], seedCandid[1], seedCandid[2]);
-                printf("i: %d, counter: %"PRIu64"\n", i, counter);
-                uint64_t label = image.labellized_trilinear_interpolation(
-                                                                          seedCandid[0], seedCandid[1], seedCandid[2], 0);
-                printf("label is %"PRIu64"\n", label);
-                seedCandid[2] += 3;
-            }
-            seedCandid[1] += 3;
-        }
-    }*/
 		size.set_size(special_size, volume_dimension,
 		              domain.index_from_subdomain_index(special_subdomain_label));
 		Sizing_field facetRadii(general_cell_size);
@@ -305,15 +239,19 @@ int main(int argc, char *argv[])
         std::cout << " ..generating mesh\n";
         std::cout.flush();
 		CGAL::refine_mesh_3(c3t3, domain, mesh_criteria, CGAL::parameters::no_reset_c3t3(), no_perturb(), no_exude());
+
         std::cout << " ..optimizing mesh\n";
         std::cout.flush();
         CGAL::odt_optimize_mesh_3(c3t3, domain, time_limit=0);
+
         std::cout << " ..perturbing mesh\n";
         std::cout.flush();
         CGAL::perturb_mesh_3(c3t3, domain, time_limit=0);
+
         std::cout << " ..exuding sliver elements\n";
         std::cout.flush();
         CGAL::exude_mesh_3(c3t3, sliver_bound=15, time_limit=300);
+
         std::cout << " ..writing mesh\n";
         std::cout.flush();
 		std::ofstream medit_file(outfn.c_str());
@@ -326,6 +264,11 @@ int main(int argc, char *argv[])
 
 		// Meshing
 		C3t3 c3t3 = CGAL::make_mesh_3<C3t3>(domain, criteria);
+
+
+        std::cout << " ..optimizing mesh\n";
+        std::cout.flush();
+        CGAL::odt_optimize_mesh_3(c3t3, domain, time_limit=0);
 
 		// Output
 		std::ofstream medit_file(outfn.c_str());
