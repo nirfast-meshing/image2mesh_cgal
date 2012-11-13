@@ -29,6 +29,8 @@
 #include <inttypes.h>
 #define __STDC_FORMAT_MACROS
 
+#include <json/json.h>
+
 // Domain
 typedef CGAL::Exact_predicates_inexact_constructions_kernel K;
 // typedef CGAL::Exact_predicates_exact_constructions_kernel_with_sqrt K;
@@ -139,18 +141,52 @@ void ConstructSeedPoints(const CGAL::Image_3& image, const Mesh_domain* domain, 
     }
 }
 
+std::string cfn, inrfn, outfn;
+double my_facet_angle=25, my_facet_size=2, my_facet_distance=1.5,
+       my_cell_radius_edge=2, my_general_cell_size=2;
+
+int parse_config_file(const char *config_fn)
+{
+    Json::Value root;
+    Json::Reader reader;
+    const std::string conf_fn(config_fn);
+
+    bool parsingOK = reader.parse(conf_fn, root);
+    if ( !parsingOK ) {
+        std::cout << " Failed to parse input configuration: "
+                  << '"' << std::string(config_fn) << "\"\n"
+                  << reader.getFormattedErrorMessages()
+                  << std::endl << std::endl;
+        return 1;
+    }
+    std::cout << " Input config file contains:" << std::endl;
+    std::cout << root;
+
+    inrfn = root.get("infilename", "._cgal_mesher.inr").asString();
+    Json::Value facet_setting = root.get("facet_setting", "");
+    Json::Value cell_setting = root.get("cell_setting", "");
+    Json::Value refine_setting = root.get("refinement", "");
+    Json::Value post_process_setting = root.get("post_processing","");
+
+    if ( facet_setting.asString() != std::string("")) {
+        my_facet_size = facet_setting.get("size", 3.0).asDouble();
+        my_facet_angle = facet_setting.get("angle", 25.0).asDouble();
+        my_facet_distance = facet_setting.get("distnace", 2.0).asDouble();
+        std::cout << my_facet_size << ' ' << my_facet_angle << ' ' << my_facet_distance << std::endl;
+    }
+}
 int main(int argc, char *argv[])
 {
 	// Loads image
 	CGAL::Image_3 image;
-	std::string cfn, inrfn, outfn;
-	double facet_angle=25, facet_size=2, facet_distance=1.5,
-	       cell_radius_edge=2, general_cell_size=2;
+
 	double special_size = 0.9; // Cell size to be used in subdomains of image with 'special_subdomain_label'
 	int special_subdomain_label = 0; // If this is set to zero, no subdomain resizing will be performed
 	int volume_dimension = 3;
 
 	bool defulatcriteria = false;
+
+    parse_config_file(argv[1]);
 
 	if (argc == 1) {
 		std::cout << " Enter the image stack file name (.inr): ";
@@ -172,11 +208,11 @@ int main(int argc, char *argv[])
 			std::cerr << " Can not read mesh criteria file!\n";
 			exit(-1);
 		}
-		cfs >> facet_angle;
-		cfs >> facet_size;
-		cfs >> facet_distance;
-		cfs >> cell_radius_edge;
-		cfs >> general_cell_size;
+		cfs >> my_facet_angle;
+		cfs >> my_facet_size;
+		cfs >> my_facet_distance;
+		cfs >> my_cell_radius_edge;
+		cfs >> my_general_cell_size;
 		cfs >> special_subdomain_label;
 		cfs >> special_size;
 	}
@@ -195,17 +231,17 @@ int main(int argc, char *argv[])
 
 	// Sizing field: set global size to general_cell_size
 	// and special size (label special_subdomain_label) to special_size
-	Sizing_field size(general_cell_size);
+	Sizing_field size(my_general_cell_size);
 	if (special_subdomain_label) {
 		std::cout << " Refining domain with label ID: " << special_subdomain_label << std::endl;
         std::cout.flush();
 		size.set_size(special_size, volume_dimension,
 		              domain.index_from_subdomain_index(special_subdomain_label));
-		Sizing_field facetRadii(general_cell_size);
+		Sizing_field facetRadii(my_general_cell_size);
 		facetRadii.set_size(special_size, volume_dimension,
 		                    domain.index_from_subdomain_index(special_subdomain_label));
-		FacetCriteria facet_criteria(facet_angle, facetRadii, facet_distance);
-		CellCriteria cell_criteria(cell_radius_edge, size);
+		FacetCriteria facet_criteria(my_facet_angle, facetRadii, my_facet_distance);
+		CellCriteria cell_criteria(my_cell_radius_edge, size);
 		Mesh_criteria mesh_criteria(facet_criteria, cell_criteria);
 
 		typedef std::vector<std::pair<Point_3, Index> > initial_points_vector;
@@ -259,8 +295,8 @@ int main(int argc, char *argv[])
 	}
 	else {
 		// Mesh criteria
-		Mesh_criteria criteria(facet_angle, facet_size, facet_distance,
-		                       cell_radius_edge, cell_size=size);
+		Mesh_criteria criteria(facet_angle=my_facet_angle, facet_size=my_facet_size, facet_distance=my_facet_distance,
+		                      cell_radius_edge=my_cell_radius_edge, cell_size=size);
 
 		// Meshing
 		C3t3 c3t3 = CGAL::make_mesh_3<C3t3>(domain, criteria);

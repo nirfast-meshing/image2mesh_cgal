@@ -19,10 +19,19 @@ if ( CGAL_FOUND )
 
   include( ${CGAL_USE_FILE} )
 
-  include( CGAL_CreateSingleSourceCGALProgram )
-  add_definitions(-O3)
+  # include( CGAL_CreateSingleSourceCGALProgram )
+  add_definitions(-O3 -fmacro-backtrace-limit=0 )
   set(CMAKE_BUILD_TYPE Release)
-  create_single_source_cgal_program( "image2mesh_cgal.cpp" )
+
+
+  add_executable(image2mesh_cgal image2mesh_cgal.cpp jsoncpp.cpp)
+  message("source dir is ${CMAKE_SOURCE_DIR}")
+include_directories(${CMAKE_SOURCE_DIR})
+    add_to_cached_list( CGAL_EXECUTABLE_TARGETS image2mesh_cgal )
+
+
+    # Link the executable to CGAL and third-party libraries
+    # target_link_libraries(image2mesh_cgal ${CGAL_LIBRARIES} ${CGAL_3RD_PARTY_LIBRARIES} )
 
   add_library(static_boost_system STATIC IMPORTED)
   set_property(TARGET static_boost_system PROPERTY IMPORTED_LOCATION /usr/local/lib/libboost_system-mt.a)
