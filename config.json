@@ -1,0 +1,51 @@
+//Configuration options
+{
+    // Input file name which should be in INR file foramt
+    "inrfilename": "cgal_mesher.inr",
+    // Output file name to store mesh in MEDIT format
+    "outfilename": "out.mesh",
+    // Setting for surface (boundary) of the mesh
+    "facet_settings": {
+        "size": 2.3,
+        "angle": 26.0,
+        // This controls how closely mesh approximates the surface of the input image stack
+        "distance": 2.2
+        },
+    // Setting for tetrahedral elements of the mesh
+    "cell_settings": {
+        // General size of the elements
+        "size": 2.3,
+        // Quality of elements, should be greater than 2.0
+        "edge_radius_ratio": 2.6
+        },
+    // Setting to make mesh more refined in selected regions
+    "refinement": {
+        "region_ids": [2],
+        "region_sizes": [1.4],
+        "keep_detailed_features": false
+        },
+    // Settings to improve quality of the mesh
+    "post_processing": {
+        // Should the mesher perform an optimization step?
+        // "method" can be either "odt" or "lloyd" (default "lloyd")
+        "optimization": {
+            "method": "odt",
+            // How many second we should spend in optimization step in seconds (0 = unlimited)
+            "time_limit": 0
+            },
+        // Remove sliver elements? (default is always remove, perform == true)
+        "sliver_exude": {
+            "perform": true,
+            // Elements with dihedral angles bigger than this are not considered "sliver"
+            "angle_bound": 15.0,
+            // How many second we should spend in sliver removal step in seconds (0 = unlimited)
+            "time_limit": 300
+            },
+        // Perturb mesh to avoid excessive sliver creation (default true)
+        "perturb_mesh": {
+            "perform": true,
+            // How many second we should spend in perturbation step in seconds (0 = unlimited)
+            "time_limit": 300
+        }
+    }
+}
