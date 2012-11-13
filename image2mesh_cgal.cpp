@@ -67,6 +67,27 @@ using std::max;
 // Usage: image2mesh_cgal inputstack.inr criteria.txt
 // criterial.txt is a text file containing setting for mesh sizes and refirement options.
 
+static std::string readInputFile( const char *path ) {
+   FILE *file = fopen( path, "rb" );
+   if ( !file )
+      return std::string("");
+
+   fseek( file, 0, SEEK_END );
+   long size = ftell( file );
+   fseek( file, 0, SEEK_SET );
+
+   std::string text;
+   char *buffer = new char[size+1];
+   buffer[size] = 0;
+
+   if ( fread( buffer, 1, size, file ) == (unsigned long)size )
+      text = buffer;
+   fclose( file );
+
+   delete[] buffer;
+   return text;
+}
+
 template<typename Mesh_domain, typename OutputIterator>
 void ConstructSeedPoints(const CGAL::Image_3& image, const Mesh_domain* domain, const std::map<int, double>& lengths, OutputIterator pts) {
 
@@ -149,9 +170,9 @@ int parse_config_file(const char *config_fn)
 {
     Json::Value root;
     Json::Reader reader;
-    const std::string conf_fn(config_fn);
 
-    bool parsingOK = reader.parse(conf_fn, root);
+    std::string input = readInputFile(config_fn);
+    bool parsingOK = reader.parse(input, root);
     if ( !parsingOK ) {
         std::cout << " Failed to parse input configuration: "
                   << '"' << std::string(config_fn) << "\"\n"
@@ -159,8 +180,6 @@ int parse_config_file(const char *config_fn)
                   << std::endl << std::endl;
         return 1;
     }
-    std::cout << " Input config file contains:" << std::endl;
-    std::cout << root;
 
     inrfn = root.get("infilename", "._cgal_mesher.inr").asString();
     Json::Value facet_setting = root.get("facet_setting", "");
@@ -168,12 +187,13 @@ int parse_config_file(const char *config_fn)
     Json::Value refine_setting = root.get("refinement", "");
     Json::Value post_process_setting = root.get("post_processing","");
 
-    if ( facet_setting.asString() != std::string("")) {
+    if ( facet_setting.type() != Json::nullValue) {
         my_facet_size = facet_setting.get("size", 3.0).asDouble();
         my_facet_angle = facet_setting.get("angle", 25.0).asDouble();
-        my_facet_distance = facet_setting.get("distnace", 2.0).asDouble();
+        my_facet_distance = facet_setting.get("distance", 2.0).asDouble();
         std::cout << my_facet_size << ' ' << my_facet_angle << ' ' << my_facet_distance << std::endl;
     }
+    return 0;
 }
 int main(int argc, char *argv[])
 {

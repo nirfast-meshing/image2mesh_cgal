@@ -21,30 +21,35 @@ if ( CGAL_FOUND )
 
   # include( CGAL_CreateSingleSourceCGALProgram )
   add_definitions(-O3 -fmacro-backtrace-limit=0 )
+  add_definitions(-Wl,-no-pie)
   set(CMAKE_BUILD_TYPE Release)
 
 
   add_executable(image2mesh_cgal image2mesh_cgal.cpp jsoncpp.cpp)
   message("source dir is ${CMAKE_SOURCE_DIR}")
-include_directories(${CMAKE_SOURCE_DIR})
-    add_to_cached_list( CGAL_EXECUTABLE_TARGETS image2mesh_cgal )
-
-
-    # Link the executable to CGAL and third-party libraries
-    # target_link_libraries(image2mesh_cgal ${CGAL_LIBRARIES} ${CGAL_3RD_PARTY_LIBRARIES} )
+  include_directories(${CMAKE_SOURCE_DIR})
 
   add_library(static_boost_system STATIC IMPORTED)
   set_property(TARGET static_boost_system PROPERTY IMPORTED_LOCATION /usr/local/lib/libboost_system-mt.a)
-add_library(static_boost_thread STATIC IMPORTED)
-  set_property(TARGET static_boost_thread PROPERTY IMPORTED_LOCATION /usr/local/lib/libboost_thread-mt.a)
-add_library(static_gmpxx STATIC IMPORTED)
-  set_property(TARGET static_gmpxx PROPERTY IMPORTED_LOCATION /usr/local/lib/libgmpxx.a)
-add_library(static_mpfr STATIC IMPORTED)
-  set_property(TARGET static_mpfr PROPERTY IMPORTED_LOCATION /usr/local/lib/libmpfr.a)
-add_library(static_gmp STATIC IMPORTED)
-  set_property(TARGET static_gmp PROPERTY IMPORTED_LOCATION /usr/local/lib/libgmp.a)
-  target_link_libraries(image2mesh_cgal static_boost_system static_boost_thread static_gmpxx static_gmp static_mpfr )
-  add_definitions(-Wl,-no-pie)
+
+    # Link the executable to CGAL and third-party libraries
+    target_link_libraries(image2mesh_cgal
+      ${CGAL_CGAL_LIBRARY}
+      ${CGAL_Core_LIBRARY} ${CGAL_ImageIO_LIBRARY}
+      ${CGAL_3RD_PARTY_LIBRARIES}
+      static_boost_system)
+
+
+# add_library(static_boost_thread STATIC IMPORTED)
+#   set_property(TARGET static_boost_thread PROPERTY IMPORTED_LOCATION /usr/local/lib/libboost_thread-mt.a)
+# add_library(static_gmpxx STATIC IMPORTED)
+#   set_property(TARGET static_gmpxx PROPERTY IMPORTED_LOCATION /usr/local/lib/libgmpxx.a)
+# add_library(static_mpfr STATIC IMPORTED)
+#   set_property(TARGET static_mpfr PROPERTY IMPORTED_LOCATION /usr/local/lib/libmpfr.a)
+# add_library(static_gmp STATIC IMPORTED)
+#   set_property(TARGET static_gmp PROPERTY IMPORTED_LOCATION /usr/local/lib/libgmp.a)
+#   target_link_libraries(image2mesh_cgal static_boost_system static_boost_thread static_gmpxx static_gmp static_mpfr )
+  # add_definitions(-Wl,-no-pie)
 else()
 
     message(STATUS "This program requires the CGAL library, and will not be compiled.")
