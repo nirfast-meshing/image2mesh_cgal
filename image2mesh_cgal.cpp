@@ -162,9 +162,12 @@ void ConstructSeedPoints(const CGAL::Image_3& image, const Mesh_domain* domain, 
     }
 }
 
-std::string cfn, inrfn, outfn;
-double my_facet_angle=25, my_facet_size=2, my_facet_distance=1.5,
-       my_cell_radius_edge=2, my_general_cell_size=2;
+std::string cfn, inrfn, outfn, opt_method;
+double my_facet_angle=25., my_facet_size=2., my_facet_distance=1.5,
+       my_cell_radius_edge=3., my_general_cell_size=2., sliver_angle_bound=15.0;
+std::map<int, double> region2size;
+bool do_refinement, do_optimization, do_sliver, do_perturb, keep_detailed_features;
+int opt_time_limit, sliver_time_limit, perturb_time_limit;
 
 int parse_config_file(const char *config_fn)
 {
@@ -181,17 +184,80 @@ int parse_config_file(const char *config_fn)
         return 1;
     }
 
-    inrfn = root.get("infilename", "._cgal_mesher.inr").asString();
-    Json::Value facet_setting = root.get("facet_setting", "");
-    Json::Value cell_setting = root.get("cell_setting", "");
-    Json::Value refine_setting = root.get("refinement", "");
-    Json::Value post_process_setting = root.get("post_processing","");
+    inrfn = root.get("inrfilename", "._cgal_mesher.inr").asString();
+    outfn = root.get("outfilename", "._out.mesh").asString();
+    Json::Value facet_setting = root["facet_settings"];// root.get("facet_settings");
+    Json::Value cell_setting = root["cell_settings"];
+    Json::Value refine_setting = root["refinement"];
+    Json::Value post_process_setting = root["post_processing"];
+
+    my_facet_size = 3.0; my_facet_angle = 25.0; my_facet_distance = 2.0;
+    my_cell_radius_edge = 3.0; my_general_cell_size = 3.0;
+    do_refinement = false;
+    do_optimization = false; opt_time_limit = 0; opt_method = "";
+    do_sliver = true; sliver_angle_bound = 15.0; sliver_time_limit = 300;
+    do_perturb = true; perturb_time_limit = 0;
+    keep_detailed_features = false;
 
     if ( facet_setting.type() != Json::nullValue) {
         my_facet_size = facet_setting.get("size", 3.0).asDouble();
         my_facet_angle = facet_setting.get("angle", 25.0).asDouble();
         my_facet_distance = facet_setting.get("distance", 2.0).asDouble();
         std::cout << my_facet_size << ' ' << my_facet_angle << ' ' << my_facet_distance << std::endl;
+    }
+
+    if ( cell_setting.type() != Json::nullValue ) {
+        my_general_cell_size = cell_setting.get("size", 3.0).asDouble();
+        my_cell_radius_edge = cell_setting.get("edge_radius_ratio", 3.0).asDouble();
+    }
+
+    if (refine_setting != Json::nullValue ) {
+        const Json::Value region_ids = refine_setting["region_ids"];
+        const Json::Value region_sizes = refine_setting["region_sizes"];
+        keep_detailed_features = refine_setting.get("keep_detailed_features", false).asBool();
+
+        for (int index = 0; index < region_ids.size(); ++index)
+        {
+            // region2size.insert(std::make_pair(region_ids[index], region_sizes[index]));
+            region2size[region_ids[index].asInt()] = region_sizes[index].asDouble();
+        }
+        if ( (region2size.size() == 1 && region2size.count(0) > 0) ||
+            region2size.empty() ) {
+            do_refinement = false;
+            region2size.clear();
+        }
+        else {
+            do_refinement = true;
+        }
+        // Make sure no label with ID == 0 exists
+        std::map<int, double>::iterator it = region2size.find(0);
+        if (it != region2size.end()) {
+            region2size.erase(it);
+        }
+        keep_detailed_features = do_refinement && !region2size.empty();
+    }
+
+    if ( post_process_setting != Json::nullValue ) {
+        Json::Value foo = post_process_setting["optimization"];
+        if ( foo != Json::nullValue ) {
+            opt_method = foo.get("method", "").asString();
+            opt_time_limit = foo.get("time_limit", 0).asInt();
+            if (!opt_method.empty() && (opt_method == "odt" || opt_method == "lloyd"))
+                do_optimization = true;
+            else
+                do_optimization = false;
+        }
+        foo = post_process_setting["sliver_exude"];
+        if (foo != Json::nullValue ) {
+            do_sliver = foo.get("perform", true).asBool();
+            sliver_angle_bound = foo.get("angle_bound", 15.0).asDouble();
+            sliver_time_limit = foo.get("time_limit", 300).asInt();
+        }
+        foo = post_process_setting["perturb_mesh"];
+        if (foo != Json::nullValue) {
+            do_perturb = foo.get("perform", true).asBool();
+            perturb_time_limit = foo.get("time_limit", 0).asInt();
+        }
     }
     return 0;
 }
@@ -214,32 +280,32 @@ int main(int argc, char *argv[])
 		defulatcriteria = true;
 		std::cout << " (Using default settings for meshing parameters!)\n";
 	}
-	else if (argc==2) {
-		inrfn = argv[1];
-		defulatcriteria = true;
-	}
-	else if (argc >= 3) {
-		inrfn = argv[1];
-		cfn = argv[2];
-	}
-	if (!defulatcriteria) {
-		std::ifstream cfs(cfn.c_str());
-		if (!cfs) {
-			std::cerr << " Can not read mesh criteria file!\n";
-			exit(-1);
-		}
-		cfs >> my_facet_angle;
-		cfs >> my_facet_size;
-		cfs >> my_facet_distance;
-		cfs >> my_cell_radius_edge;
-		cfs >> my_general_cell_size;
-		cfs >> special_subdomain_label;
-		cfs >> special_size;
-	}
-	if (argc >= 4)
-		outfn = argv[3];
-	else
-		outfn = "_tmp_image2mesh_cgal.mesh";
+	// else if (argc==2) {
+	// 	inrfn = argv[1];
+	// 	defulatcriteria = true;
+	// }
+	// else if (argc >= 3) {
+	// 	inrfn = argv[1];
+	// 	cfn = argv[2];
+	// }
+	// if (!defulatcriteria) {
+	// 	std::ifstream cfs(cfn.c_str());
+	// 	if (!cfs) {
+	// 		std::cerr << " Can not read mesh criteria file!\n";
+	// 		exit(-1);
+	// 	}
+	// 	cfs >> my_facet_angle;
+	// 	cfs >> my_facet_size;
+	// 	cfs >> my_facet_distance;
+	// 	cfs >> my_cell_radius_edge;
+	// 	cfs >> my_general_cell_size;
+	// 	cfs >> special_subdomain_label;
+	// 	cfs >> special_size;
+	// }
+	// if (argc >= 4)
+	// 	outfn = argv[3];
+	// else
+	// 	outfn = "_tmp_image2mesh_cgal.mesh";
 
 	bool ret = image.read(inrfn.c_str());
     if (ret) {
