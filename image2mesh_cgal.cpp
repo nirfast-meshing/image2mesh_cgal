@@ -51,7 +51,6 @@ typedef Mesh_criteria::Facet_criteria FacetCriteria;
 typedef Mesh_criteria::Cell_criteria CellCriteria;
 
 typedef Mesh_domain::Point_3 Point_3;
-// typedef std::vector<double> PointType;
 struct PointType
 {
     double x;
@@ -91,16 +90,7 @@ static std::string readInputFile( const char *path ) {
 template<typename Mesh_domain, typename OutputIterator>
 void ConstructSeedPoints(const CGAL::Image_3& image, const Mesh_domain* domain, const std::map<int, double>& lengths, OutputIterator pts) {
 
-    // typedef typename Mesh_domain::Point_3 PointType;
-
-    // Point_3 origin = image.GetGeometry()->GetOrigin();
-    // Point_3 endPoint = image.GetGeometry()->GetCornerPoint(7);
-//    PointType origin; origin.push_back(0.); origin.push_back(0.); origin.push_back(0.);
     double origin[3] = {0., 0., 0.};
-//    PointType endPoint;
-//    endPoint.push_back(image.vx()*image.xdim());
-//    endPoint.push_back(image.vy()*image.ydim());
-//    endPoint.push_back(image.vz()*image.zdim());
     double endPoint[3] = {image.vx()*image.xdim(), image.vy()*image.ydim(), image.vz()*image.zdim()};
 
     //std::set<int> foo;
@@ -166,7 +156,8 @@ std::string cfn, inrfn, outfn, opt_method;
 double my_facet_angle=25., my_facet_size=2., my_facet_distance=1.5,
        my_cell_radius_edge=3., my_general_cell_size=2., sliver_angle_bound=15.0;
 std::map<int, double> region2size;
-bool do_refinement, do_optimization, do_sliver, do_perturb, keep_detailed_features;
+bool do_refinement, do_optimization, do_sliver, do_perturb
+bool keep_detailed_features;
 int opt_time_limit, sliver_time_limit, perturb_time_limit;
 
 int parse_config_file(const char *config_fn)
@@ -186,10 +177,10 @@ int parse_config_file(const char *config_fn)
 
     inrfn = root.get("inrfilename", "._cgal_mesher.inr").asString();
     outfn = root.get("outfilename", "._out.mesh").asString();
-    Json::Value facet_setting = root["facet_settings"];// root.get("facet_settings");
-    Json::Value cell_setting = root["cell_settings"];
-    Json::Value refine_setting = root["refinement"];
-    Json::Value post_process_setting = root["post_processing"];
+    Json::Value facet_setting        = root[ "facet_settings" ];
+    Json::Value cell_setting         = root[ "cell_settings" ];
+    Json::Value refine_setting       = root[ "refinement" ];
+    Json::Value post_process_setting = root[ "post_processing" ];
 
     my_facet_size = 3.0; my_facet_angle = 25.0; my_facet_distance = 2.0;
     my_cell_radius_edge = 3.0; my_general_cell_size = 3.0;
@@ -200,25 +191,22 @@ int parse_config_file(const char *config_fn)
     keep_detailed_features = false;
 
     if ( facet_setting.type() != Json::nullValue) {
-        my_facet_size = facet_setting.get("size", 3.0).asDouble();
-        my_facet_angle = facet_setting.get("angle", 25.0).asDouble();
-        my_facet_distance = facet_setting.get("distance", 2.0).asDouble();
-        std::cout << my_facet_size << ' ' << my_facet_angle << ' ' << my_facet_distance << std::endl;
+        my_facet_size      = facet_setting.get("size", 3.0).asDouble();
+        my_facet_angle     = facet_setting.get("angle", 25.0).asDouble();
+        my_facet_distance  = facet_setting.get("distance", 2.0).asDouble();
     }
 
     if ( cell_setting.type() != Json::nullValue ) {
-        my_general_cell_size = cell_setting.get("size", 3.0).asDouble();
-        my_cell_radius_edge = cell_setting.get("edge_radius_ratio", 3.0).asDouble();
+        my_general_cell_size  = cell_setting.get("size", 3.0).asDouble();
+        my_cell_radius_edge   = cell_setting.get("edge_radius_ratio", 3.0).asDouble();
     }
 
     if (refine_setting != Json::nullValue ) {
-        const Json::Value region_ids = refine_setting["region_ids"];
-        const Json::Value region_sizes = refine_setting["region_sizes"];
-        keep_detailed_features = refine_setting.get("keep_detailed_features", false).asBool();
+        const Json::Value region_ids    = refine_setting[ "region_ids" ];
+        const Json::Value region_sizes  = refine_setting[ "region_sizes" ];
+        keep_detailed_features          = refine_setting.get("keep_detailed_features", false).asBool();
 
-        for (int index = 0; index < region_ids.size(); ++index)
-        {
-            // region2size.insert(std::make_pair(region_ids[index], region_sizes[index]));
+        for (int index = 0; index < region_ids.size(); ++index) {
             region2size[region_ids[index].asInt()] = region_sizes[index].asDouble();
         }
         if ( (region2size.size() == 1 && region2size.count(0) > 0) ||
@@ -234,14 +222,14 @@ int parse_config_file(const char *config_fn)
         if (it != region2size.end()) {
             region2size.erase(it);
         }
-        keep_detailed_features = do_refinement && !region2size.empty();
+        keep_detailed_features = keep_detailed_features && do_refinement && !region2size.empty();
     }
 
     if ( post_process_setting != Json::nullValue ) {
         Json::Value foo = post_process_setting["optimization"];
         if ( foo != Json::nullValue ) {
-            opt_method = foo.get("method", "").asString();
-            opt_time_limit = foo.get("time_limit", 0).asInt();
+            opt_method      = foo.get("method", "").asString();
+            opt_time_limit  = foo.get("time_limit", 0).asInt();
             if (!opt_method.empty() && (opt_method == "odt" || opt_method == "lloyd"))
                 do_optimization = true;
             else
@@ -249,14 +237,14 @@ int parse_config_file(const char *config_fn)
         }
         foo = post_process_setting["sliver_exude"];
         if (foo != Json::nullValue ) {
-            do_sliver = foo.get("perform", true).asBool();
-            sliver_angle_bound = foo.get("angle_bound", 15.0).asDouble();
-            sliver_time_limit = foo.get("time_limit", 300).asInt();
+            do_sliver           = foo.get("perform", true).asBool();
+            sliver_angle_bound  = foo.get("angle_bound", 15.0).asDouble();
+            sliver_time_limit   = foo.get("time_limit", 300).asInt();
         }
         foo = post_process_setting["perturb_mesh"];
         if (foo != Json::nullValue) {
-            do_perturb = foo.get("perform", true).asBool();
-            perturb_time_limit = foo.get("time_limit", 0).asInt();
+            do_perturb          = foo.get("perform", true).asBool();
+            perturb_time_limit  = foo.get("time_limit", 0).asInt();
         }
     }
     return 0;
@@ -376,8 +364,8 @@ int main(int argc, char *argv[])
 
         std::cout << " ..writing mesh\n";
         std::cout.flush();
-		std::ofstream medit_file(outfn.c_str());
-		c3t3.output_to_medit(medit_file);
+        std::ofstream medit_file(outfn.c_str());
+        c3t3.output_to_medit(medit_file);
 	}
 	else {
 		// Mesh criteria
