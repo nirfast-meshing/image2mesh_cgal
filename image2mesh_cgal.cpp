@@ -156,7 +156,7 @@ std::string cfn, inrfn, outfn, opt_method;
 double my_facet_angle=25., my_facet_size=2., my_facet_distance=1.5,
        my_cell_radius_edge=3., my_general_cell_size=2., sliver_angle_bound=15.0;
 std::map<int, double> region2size;
-bool do_refinement, do_optimization, do_sliver, do_perturb
+bool do_refinement, do_optimization, do_sliver, do_perturb;
 bool keep_detailed_features;
 int opt_time_limit, sliver_time_limit, perturb_time_limit;
 
@@ -247,6 +247,23 @@ int parse_config_file(const char *config_fn)
             perturb_time_limit  = foo.get("time_limit", 0).asInt();
         }
     }
+
+    std::cout << "my_facet_size: " << my_facet_size << std::endl;
+    std::cout << "my_facet_angle: " << my_facet_angle << std::endl;
+    std::cout << "my_facet_distance: " << my_facet_distance << std::endl;
+    std::cout << "my_cell_radius_edge: " << my_cell_radius_edge << std::endl;
+    std::cout << "my_general_cell_size: " << my_general_cell_size << std::endl;
+    std::cout << "do_refinement: " << (do_refinement ? "yes" : "no") << std::endl;
+    std::cout << "do_optimization: " << (do_optimization ? "yes" : "no") << std::endl;
+    std::cout << "opt_time_limit: " << opt_time_limit << std::endl;
+    std::cout << "opt_method: " << opt_method << std::endl;
+    std::cout << "do_sliver: " << (do_sliver ? "yes" : "no") << std::endl;
+    std::cout << "sliver_angle_bound: " << sliver_angle_bound << std::endl;
+    std::cout << "sliver_time_limit: " << sliver_time_limit << std::endl;
+    std::cout << "do_perturb: " << (do_perturb ? "yes" : "no") << std::endl;
+    std::cout << "perturb_time_limit: " << perturb_time_limit << std::endl;
+    std::cout << "keep_detailed_features: " << (keep_detailed_features ? "yes" : "no") << std::endl;
+
     return 0;
 }
 int main(int argc, char *argv[])
@@ -261,6 +278,7 @@ int main(int argc, char *argv[])
 	bool defulatcriteria = false;
 
     parse_config_file(argv[1]);
+    return 0;
 
 	if (argc == 1) {
 		std::cout << " Enter the image stack file name (.inr): ";
