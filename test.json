@@ -20,8 +20,8 @@
         },
     // Setting to make mesh more refined in selected regions
     "refinement": {
-        "region_ids": [2],
-        "region_sizes": [1.4],
+        "region_ids": [2, 4],
+        "region_sizes": [1.4, 3.4],
         "keep_detailed_features": false
         },
     // Settings to improve quality of the mesh
@@ -29,7 +29,7 @@
         // Should the mesher perform an optimization step?
         // "method" can be either "odt" or "lloyd" (default "lloyd")
         "optimization": {
-            "method": "odt",
+            "method": "lloyd",
             // How many second we should spend in optimization step in seconds (0 = unlimited)
             "time_limit": 0
             },

@@ -122,10 +122,13 @@ void ConstructSeedPoints(const CGAL::Image_3& image, const Mesh_domain* domain, 
                 seedPointCandidate[2] = origin[2];
                 while (seedPointCandidate[2] < endPoint[2]) {
                     uint64_t label = image.labellized_trilinear_interpolation(
-                            seedPointCandidate[0], seedPointCandidate[1], seedPointCandidate[2],(unsigned char)(0));
+                            seedPointCandidate[0], seedPointCandidate[1],
+                            seedPointCandidate[2],(unsigned char)(0));
                     if (label != 0 && current_label == label) {
                         PointType foo;
-                        foo.x = seedPointCandidate[0]; foo.y = seedPointCandidate[1]; foo.z = seedPointCandidate[2];
+                        foo.x = seedPointCandidate[0];
+                        foo.y = seedPointCandidate[1];
+                        foo.z = seedPointCandidate[2];
                         seedPoints[thread_num].push_back(std::make_pair(foo, label));
                         ++counter;
                         _labels.insert(label);
@@ -135,8 +138,9 @@ void ConstructSeedPoints(const CGAL::Image_3& image, const Mesh_domain* domain, 
                 seedPointCandidate[1] += current_size;
             }
         }
-        std::cout << " ..Mesh needs a total of " << counter << " Steiner points to meet sizing requirements." << std::endl;
-                        std::cout.flush();
+        std::cout << " ..Mesh needs a total of " << counter <<
+            " Steiner points to meet sizing requirements." << std::endl;
+        std::cout.flush();
         std::cout << " ..labels refined are: ";
         for (std::set<int>::iterator i=_labels.begin(); i != _labels.end(); ++i)
         {
@@ -146,7 +150,9 @@ void ConstructSeedPoints(const CGAL::Image_3& image, const Mesh_domain* domain, 
         for (std::size_t i = 0; i < seedPoints.size(); ++i) {
             for (std::size_t j = 0; j < seedPoints[i].size(); ++j) {
                 const PointType seedPoint = seedPoints[i][j].first;
-                *pts++ = std::make_pair(Point_3(seedPoint.x, seedPoint.y, seedPoint.z), domain->index_from_subdomain_index(seedPoints[i][j].second));
+                *pts++ = std::make_pair(Point_3(seedPoint.x, seedPoint.y,
+                                        seedPoint.z),
+                domain->index_from_subdomain_index(seedPoints[i][j].second));
             }
         }
     }
@@ -222,7 +228,8 @@ int parse_config_file(const char *config_fn)
         if (it != region2size.end()) {
             region2size.erase(it);
         }
-        keep_detailed_features = keep_detailed_features && do_refinement && !region2size.empty();
+        keep_detailed_features = keep_detailed_features
+                                && do_refinement && !region2size.empty();
     }
 
     if ( post_process_setting != Json::nullValue ) {
