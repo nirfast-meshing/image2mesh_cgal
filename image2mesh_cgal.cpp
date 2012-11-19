@@ -16,6 +16,7 @@
 #include <CGAL/Labeled_image_mesh_domain_3.h>
 #include <CGAL/make_mesh_3.h>
 #include <CGAL/Image_3.h>
+#include <CGAL/refine_mesh_3.h>
 #include <CGAL/ImageIO.h>
 
 #include <vector>
@@ -286,6 +287,20 @@ int main(int argc, char *argv[])
 
     parse_config_file(argv[1]);
     return 0;
+
+    if (do_sliver)
+        CGAL::parameters::internal::Exude_options exude_setting =
+         CGAL::parameters::exude(time_limit=0, sliver_bound=sliver_angle_bound);
+    else
+        CGAL::parameters::internal::Exude_options exude_setting =
+                                                CGAL::parameters::no_exude();
+    if (do_perturb)
+        CGAL::parameters::internal::Perturb_options perturb_setting =
+                                CGA::parameters::perturb(perturb_time_limit);
+    else
+        CGAL::parameters::internal::Perturb_options perturb_setting =
+
+
 
 	if (argc == 1) {
 		std::cout << " Enter the image stack file name (.inr): ";
