@@ -171,13 +171,14 @@ void ConstructSeedPoints(const CGAL::Image_3& image, const Mesh_domain* domain, 
     }
 }
 
-std::string cfn, inrfn, outfn, opt_method;
+std::string inrfn="cgal_mesher.inr", outfn="out.mesh", opt_method="";
 double my_facet_angle=25., my_facet_size=2., my_facet_distance=1.5,
        my_cell_radius_edge=3., my_general_cell_size=2., sliver_angle_bound=15.0;
 std::map<int, double> region2size;
-bool do_refinement, do_optimization, do_sliver, do_perturb;
-bool keep_detailed_features;
-int opt_time_limit, sliver_time_limit, perturb_time_limit;
+bool do_refinement=false, do_optimization=false,
+     do_sliver=true, do_perturb=true;
+bool keep_detailed_features=false;
+int opt_time_limit=0, sliver_time_limit=300, perturb_time_limit=0;
 int volume_dimension = 3;
 
 int parse_config_file(const char *config_fn)
@@ -186,6 +187,11 @@ int parse_config_file(const char *config_fn)
     Json::Reader reader;
 
     std::string input = readInputFile(config_fn);
+    if (input.empty()) {
+        std::cout << "\n\n...Can't read meshing configuration file: "
+                  << std::string(config_fn) << std::endl;
+        return 1;
+    }
     bool parsingOK = reader.parse(input, root);
     if ( !parsingOK ) {
         std::cout << " Failed to parse input configuration: "
@@ -270,6 +276,32 @@ int parse_config_file(const char *config_fn)
             perturb_time_limit  = foo.get("time_limit", 0).asInt();
         }
     }
+    return 0;
+}
+int main(int argc, char *argv[])
+{
+	// Loads image
+	CGAL::Image_3 image;
+
+	double special_size = 0.9; // Cell size to be used in subdomains of image with 'special_subdomain_label'
+	int special_subdomain_label = 0; // If this is set to zero, no subdomain resizing will be performed
+
+    const char *config_fn;
+
+    if (argc == 1) {
+        std::cout << " Enter the meshing configuration filename (.json): ";
+        std::cin >> inrfn;
+        if (inrfn.empty()) {
+            std::cout << "\n(Using default settings for meshing parameters!)\n";
+            config_fn = "config.json";
+        }
+        else
+            config_fn = inrfn.c_str();
+    }
+    else
+        config_fn = argv[1];
+
+    int parse_st = parse_config_file(config_fn);
 
     std::cout << "my_facet_size: " << my_facet_size << std::endl;
     std::cout << "my_facet_angle: " << my_facet_angle << std::endl;
@@ -286,31 +318,13 @@ int parse_config_file(const char *config_fn)
     std::cout << "do_perturb: " << (do_perturb ? "yes" : "no") << std::endl;
     std::cout << "perturb_time_limit: " << perturb_time_limit << std::endl;
     std::cout << "keep_detailed_features: " << (keep_detailed_features ? "yes" : "no") << std::endl;
+    std::cout << "inrfilename: " << inrfn << std::endl;
+    std::cout << "outfn: " << outfn << std::endl;
 
-    return 0;
-}
-int main(int argc, char *argv[])
-{
-	// Loads image
-	CGAL::Image_3 image;
-
-	double special_size = 0.9; // Cell size to be used in subdomains of image with 'special_subdomain_label'
-	int special_subdomain_label = 0; // If this is set to zero, no subdomain resizing will be performed
-
-    const char *config_fn;
-
-    if (argc == 1) {
-        std::cout << " Enter the meshing configuration filename (.json): ";
-        std::cin >> inrfn;
-        if (inrfn.empty())
-            std::cout << " (Using default settings for meshing parameters!)\n";
-        else
-            config_fn = inrfn.c_str();
+    if (parse_st != 0) {
+        std::cout << "\tExiting!\n\n";
+        exit(1);
     }
-    else
-        config_fn = argv[1];
-
-    parse_config_file(config_fn);
     bool ret = image.read(inrfn.c_str());
     if (ret) {
         std::cout << " Read the image successfully\n";
