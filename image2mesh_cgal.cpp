@@ -283,9 +283,6 @@ int main(int argc, char *argv[])
 	// Loads image
 	CGAL::Image_3 image;
 
-	double special_size = 0.9; // Cell size to be used in subdomains of image with 'special_subdomain_label'
-	int special_subdomain_label = 0; // If this is set to zero, no subdomain resizing will be performed
-
     const char *config_fn;
 
     if (argc == 1) {
@@ -297,8 +294,7 @@ int main(int argc, char *argv[])
         }
         else
             config_fn = inrfn.c_str();
-    }
-    else
+    } else
         config_fn = argv[1];
 
     int parse_st = parse_config_file(config_fn);
@@ -362,7 +358,10 @@ int main(int argc, char *argv[])
         mesh = create_mesh_no_refinement(domain, exude_setting,
                                          perturb_setting);
     }
-
+    
+    std::ofstream medit_file(outfn.c_str());
+    mesh.output_to_medit(medit_file);
+    
 	// Sizing field: set global size to general_cell_size
 	// and special size (label special_subdomain_label) to special_size
 }
