@@ -6,22 +6,22 @@
     "outfilename": "out.mesh",
     // Setting for surface (boundary) of the mesh
     "facet_settings": {
-        "size": 3.0,
+        "size": 2.0,
         "angle": 25.0,
         // This controls how closely mesh approximates the surface of the input image stack
-        "distance": 3.0
+        "distance": 2.0
         },
     // Setting for tetrahedral elements of the mesh
     "cell_settings": {
         // General size of the elements
-        "size": 3,
+        "size": 2,
         // Quality of elements, should be greater than 2.0
         "edge_radius_ratio": 3.0
         },
     // Setting to make mesh more refined in selected regions
     "refinement": {
-        "region_ids": [0],
-        "region_sizes": [1.5],
+        "region_ids": [1],
+        "region_sizes": [1.],
         "keep_detailed_features": false
         },
     // Settings to improve quality of the mesh

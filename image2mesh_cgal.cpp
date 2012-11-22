@@ -235,6 +235,7 @@ int parse_config_file(const char *config_fn)
         for (int index = 0; index < region_ids.size(); ++index) {
             region2size[region_ids[index].asInt()] = region_sizes[index].asDouble();
         }
+        std::cout << region2size.size() << '\n';
         if ( (region2size.size() == 1 && region2size.count(0) > 0) ||
             region2size.empty() ) {
             do_refinement = false;
@@ -243,6 +244,7 @@ int parse_config_file(const char *config_fn)
         else {
             do_refinement = true;
         }
+        std::cout << region2size.size() << '\n';
         // Make sure no label with ID == 0 exists
         std::map<int, double>::iterator it = region2size.find(0);
         if (it != region2size.end()) {
@@ -250,6 +252,7 @@ int parse_config_file(const char *config_fn)
         }
         if (region2size.size() == 1)
             do_refinement = false;
+        std::cout << region2size.size() << '\n';
         keep_detailed_features = keep_detailed_features
                                 && do_refinement && !region2size.empty();
     }
@@ -358,10 +361,10 @@ int main(int argc, char *argv[])
         mesh = create_mesh_no_refinement(domain, exude_setting,
                                          perturb_setting);
     }
-    
+
     std::ofstream medit_file(outfn.c_str());
     mesh.output_to_medit(medit_file);
-    
+
 	// Sizing field: set global size to general_cell_size
 	// and special size (label special_subdomain_label) to special_size
 }
