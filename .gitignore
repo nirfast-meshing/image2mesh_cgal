@@ -13,3 +13,4 @@ mac32.node
 out.mesh
 make
 xcode
+cgal_mesher.inr

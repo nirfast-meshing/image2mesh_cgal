@@ -250,8 +250,13 @@ int parse_config_file(const char *config_fn)
         if (it != region2size.end()) {
             region2size.erase(it);
         }
-        if (region2size.size() == 1)
-            do_refinement = false;
+        // TODO: after reading image, if region2size has only 1 element
+        //       and the 'image' only contains one region ID, then
+        //       'refinement' doesn't make sense and we should follow the
+        //       the global cell size given.
+        // if (region2size.size() == 1)
+        //    do_refinement = false;
+        
         std::cout << region2size.size() << '\n';
         keep_detailed_features = keep_detailed_features
                                 && do_refinement && !region2size.empty();
