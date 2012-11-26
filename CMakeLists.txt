@@ -20,9 +20,9 @@ if ( CGAL_FOUND )
   include( ${CGAL_USE_FILE} )
 
   # include( CGAL_CreateSingleSourceCGALProgram )
-  add_definitions(-O2 -fmacro-backtrace-limit=0 )
+  add_definitions(-O3 -fmacro-backtrace-limit=0 )
   add_definitions(-Wl,-no-pie)
-  add_definitions(-Wno-c++11-extensions)
+  add_definitions(-Wno-c++11-extensions -DCGAL_MESH_3_VERBOSE)
   set(CMAKE_BUILD_TYPE Release)
 
 

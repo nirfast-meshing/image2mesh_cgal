@@ -65,16 +65,24 @@ using namespace CGAL::parameters;
 using std::min;
 using std::max;
 
-C3t3 create_mesh_no_refinement(Mesh_domain& domain,
+void create_mesh_no_refinement(C3t3& mesh, Mesh_domain& domain,
             CGAL::parameters::internal::Exude_options& exude_setting,
-            CGAL::parameters::internal::Perturb_options& perturb_setting);
-C3t3 refine_mesh_with_inserted_steinderpoints(Mesh_domain& domain,
+            CGAL::parameters::internal::Perturb_options& perturb_setting,
+            CGAL::parameters::internal::Lloyd_options& lloyd_options,
+            CGAL::parameters::internal::Odt_options& odt_options);
+
+void refine_mesh_with_inserted_steiner_points(C3t3& mesh, Mesh_domain& domain,
             CGAL::Image_3 &image,
             CGAL::parameters::internal::Exude_options& exude_setting,
-            CGAL::parameters::internal::Perturb_options& perturb_setting);
-C3t3 refine_mesh_use_std_method(Mesh_domain& domain,
+            CGAL::parameters::internal::Perturb_options& perturb_setting,
+            CGAL::parameters::internal::Lloyd_options& lloyd_options,
+            CGAL::parameters::internal::Odt_options& odt_options);
+
+void refine_mesh_use_std_method(C3t3& mesh, Mesh_domain& domain,
             CGAL::parameters::internal::Exude_options& exude_setting,
-            CGAL::parameters::internal::Perturb_options& perturb_setting);
+            CGAL::parameters::internal::Perturb_options& perturb_setting,
+            CGAL::parameters::internal::Lloyd_options& lloyd_options,
+            CGAL::parameters::internal::Odt_options& odt_options);
 
 // Usage: image2mesh_cgal inputstack.inr criteria.txt
 // criterial.txt is a text file containing setting for mesh sizes and refirement options.
@@ -171,12 +179,13 @@ void ConstructSeedPoints(const CGAL::Image_3& image, const Mesh_domain* domain, 
     }
 }
 
-std::string inrfn="cgal_mesher.inr", outfn="out.mesh", opt_method="";
+std::string inrfn="cgal_mesher.inr", outfn="out.mesh";
 double my_facet_angle=25., my_facet_size=2., my_facet_distance=1.5,
        my_cell_radius_edge=3., my_general_cell_size=2., sliver_angle_bound=15.0;
 std::map<int, double> region2size;
 bool do_refinement=false, do_optimization=false,
-     do_sliver=true, do_perturb=true;
+     do_sliver=true, do_perturb=true,
+     opt_method_lloyd=false, opt_method_odt = false;
 bool keep_detailed_features=false;
 int opt_time_limit=0, sliver_time_limit=300, perturb_time_limit=0;
 int volume_dimension = 3;
@@ -211,7 +220,8 @@ int parse_config_file(const char *config_fn)
     my_facet_size = 3.0; my_facet_angle = 25.0; my_facet_distance = 2.0;
     my_cell_radius_edge = 3.0; my_general_cell_size = 3.0;
     do_refinement = false;
-    do_optimization = false; opt_time_limit = 0; opt_method = "";
+    do_optimization = false; opt_time_limit = 0;
+    opt_method_lloyd = false; opt_method_odt = false;
     do_sliver = true; sliver_angle_bound = 15.0; sliver_time_limit = 300;
     do_perturb = true; perturb_time_limit = 0;
     keep_detailed_features = false;
@@ -256,7 +266,7 @@ int parse_config_file(const char *config_fn)
         //       the global cell size given.
         // if (region2size.size() == 1)
         //    do_refinement = false;
-        
+
         std::cout << region2size.size() << '\n';
         keep_detailed_features = keep_detailed_features
                                 && do_refinement && !region2size.empty();
@@ -265,9 +275,10 @@ int parse_config_file(const char *config_fn)
     if ( post_process_setting != Json::nullValue ) {
         Json::Value foo = post_process_setting["optimization"];
         if ( foo != Json::nullValue ) {
-            opt_method      = foo.get("method", "").asString();
+            opt_method_odt      = foo.get("odt", false).asBool();
+            opt_method_lloyd      = foo.get("lloyd", false).asBool();
             opt_time_limit  = foo.get("time_limit", 0).asInt();
-            if (!opt_method.empty() && (opt_method == "odt" || opt_method == "lloyd"))
+            if (opt_method_lloyd || opt_method_odt)
                 do_optimization = true;
             else
                 do_optimization = false;
@@ -315,7 +326,8 @@ int main(int argc, char *argv[])
     std::cout << "do_refinement: " << (do_refinement ? "yes" : "no") << std::endl;
     std::cout << "do_optimization: " << (do_optimization ? "yes" : "no") << std::endl;
     std::cout << "opt_time_limit: " << opt_time_limit << std::endl;
-    std::cout << "opt_method: " << opt_method << std::endl;
+    std::cout << "opt_method_odt: " << opt_method_odt << std::endl;
+    std::cout << "opt_method_lloyd: " << opt_method_lloyd << std::endl;
     std::cout << "do_sliver: " << (do_sliver ? "yes" : "no") << std::endl;
     std::cout << "sliver_angle_bound: " << sliver_angle_bound << std::endl;
     std::cout << "sliver_time_limit: " << sliver_time_limit << std::endl;
@@ -341,74 +353,106 @@ int main(int argc, char *argv[])
 
     CGAL::parameters::internal::Exude_options exude_setting(true);
     CGAL::parameters::internal::Perturb_options perturb_setting(true);
+    CGAL::parameters::internal::Lloyd_options lloyd_options(false);
+    CGAL::parameters::internal::Odt_options odt_options(false);
+
+    // Sliver removal setting
     if (do_sliver)
         exude_setting =
             CGAL::parameters::exude(time_limit=0,
                                     sliver_bound=sliver_angle_bound);
     else
         exude_setting = CGAL::parameters::no_exude();
+    // Perturbation setting
     if (do_perturb)
         perturb_setting = CGAL::parameters::perturb(perturb_time_limit);
     else
         perturb_setting = CGAL::parameters::no_perturb();
 
+    // Optimization settting
+    if (do_optimization) {
+        if (opt_method_odt) {
+            odt_options = CGAL::parameters::odt(time_limit = opt_time_limit);
+        }
+        else
+            odt_options = CGAL::parameters::no_odt();
+        if (opt_method_lloyd) {
+            lloyd_options = CGAL::parameters::lloyd(time_limit = opt_time_limit);
+        }
+        else
+            lloyd_options = CGAL::parameters::no_lloyd();
+    }
+    else {
+        lloyd_options = CGAL::parameters::no_lloyd();
+        odt_options = CGAL::parameters::no_odt();
+    }
+
     if (do_refinement) {
         if (keep_detailed_features) {
-            mesh = refine_mesh_with_inserted_steinderpoints(domain, image,
-                                                exude_setting, perturb_setting);
+            refine_mesh_with_inserted_steiner_points(mesh, domain, image,
+                                                exude_setting, perturb_setting,
+                                                lloyd_options, odt_options);
         }
         else {
-            mesh = refine_mesh_use_std_method(domain, exude_setting,
-                                              perturb_setting);
+            refine_mesh_use_std_method(mesh, domain, exude_setting,
+                                              perturb_setting,
+                                              lloyd_options, odt_options);
         }
     }
     else {
-        mesh = create_mesh_no_refinement(domain, exude_setting,
-                                         perturb_setting);
+        create_mesh_no_refinement(mesh, domain, exude_setting,
+                                         perturb_setting,
+                                         lloyd_options, odt_options);
     }
 
     std::ofstream medit_file(outfn.c_str());
     mesh.output_to_medit(medit_file);
 
-	// Sizing field: set global size to general_cell_size
-	// and special size (label special_subdomain_label) to special_size
+    return 0;
 }
-C3t3 refine_mesh_use_std_method(Mesh_domain& domain,
+void refine_mesh_use_std_method(C3t3& mesh, Mesh_domain& domain,
             CGAL::parameters::internal::Exude_options& exude_setting,
-            CGAL::parameters::internal::Perturb_options& perturb_setting) {
+            CGAL::parameters::internal::Perturb_options& perturb_setting,
+            CGAL::parameters::internal::Lloyd_options& lloyd_options,
+            CGAL::parameters::internal::Odt_options& odt_options) {
+
     Sizing_field size(my_general_cell_size);
     Sizing_field facetRadii(my_general_cell_size);
     std::map<int,double>::const_iterator it;
+
     for (it=region2size.begin(); it!=region2size.end(); ++it) {
         size.set_size(it->second, volume_dimension,
                     domain.index_from_subdomain_index(it->first));
         facetRadii.set_size(it->second, volume_dimension,
                     domain.index_from_subdomain_index(it->first));
     }
+
     FacetCriteria facet_criteria(my_facet_angle, facetRadii, my_facet_distance);
     CellCriteria cell_criteria(my_cell_radius_edge, size);
     Mesh_criteria mesh_criteria(facet_criteria, cell_criteria);
 
-    C3t3 mesh;
-    mesh = CGAL::make_mesh_3<C3t3>(domain, mesh_criteria, no_lloyd(),
-                        no_odt(), perturb_setting, exude_setting);
-    return mesh;
+    mesh = CGAL::make_mesh_3<C3t3>(domain, mesh_criteria, lloyd_options,
+                        odt_options, perturb_setting, exude_setting);
 }
 
-C3t3 refine_mesh_with_inserted_steinderpoints(Mesh_domain& domain,
+void refine_mesh_with_inserted_steiner_points(C3t3& mesh, Mesh_domain& domain,
             CGAL::Image_3& image,
             CGAL::parameters::internal::Exude_options& exude_setting,
-            CGAL::parameters::internal::Perturb_options& perturb_setting) {
+            CGAL::parameters::internal::Perturb_options& perturb_setting,
+            CGAL::parameters::internal::Lloyd_options& lloyd_options,
+            CGAL::parameters::internal::Odt_options& odt_options) {
 
     Sizing_field size(my_general_cell_size);
     Sizing_field facetRadii(my_general_cell_size);
     std::map<int,double>::const_iterator it;
+
     for (it=region2size.begin(); it!=region2size.end(); ++it) {
         size.set_size(it->second, volume_dimension,
                     domain.index_from_subdomain_index(it->first));
         facetRadii.set_size(it->second, volume_dimension,
                     domain.index_from_subdomain_index(it->first));
     }
+
 	FacetCriteria facet_criteria(my_facet_angle, facetRadii, my_facet_distance);
 	CellCriteria cell_criteria(my_cell_radius_edge, size);
 	Mesh_criteria mesh_criteria(facet_criteria, cell_criteria);
@@ -416,9 +460,6 @@ C3t3 refine_mesh_with_inserted_steinderpoints(Mesh_domain& domain,
 	typedef std::vector<std::pair<Point_3, Index> > initial_points_vector;
 	typedef initial_points_vector::iterator Ipv_iterator;
 	typedef C3t3::Vertex_handle Vertex_handle;
-
-	// Initialize c3t3
-	C3t3 mesh;
 
 	initial_points_vector initial_points;
 	ConstructSeedPoints(image, &domain, region2size,
@@ -439,15 +480,15 @@ C3t3 refine_mesh_with_inserted_steinderpoints(Mesh_domain& domain,
 			mesh.set_index(v, it->second);
 		}
 	}
+
 	CGAL_assertion(mesh.triangulation().dimension() == 3);
     std::cout << " ..generating mesh\n";
     std::cout.flush();
 
 	CGAL::refine_mesh_3(mesh, domain, mesh_criteria,
-            CGAL::parameters::no_reset_c3t3(), no_lloyd(), no_odt(),
+            CGAL::parameters::no_reset_c3t3(), lloyd_options, odt_options,
             perturb_setting, exude_setting);
 
-    return mesh;
     // std::cout << " ..optimizing mesh\n";
     // std::cout.flush();
     // CGAL::odt_optimize_mesh_3(mesh, domain, time_limit=0);
@@ -467,9 +508,12 @@ C3t3 refine_mesh_with_inserted_steinderpoints(Mesh_domain& domain,
 
 }
 
-C3t3 create_mesh_no_refinement(Mesh_domain& domain,
+void create_mesh_no_refinement(C3t3& mesh, Mesh_domain& domain,
             CGAL::parameters::internal::Exude_options& exude_setting,
-            CGAL::parameters::internal::Perturb_options& perturb_setting) {
+            CGAL::parameters::internal::Perturb_options& perturb_setting,
+            CGAL::parameters::internal::Lloyd_options& lloyd_options,
+            CGAL::parameters::internal::Odt_options& odt_options) {
+
 		// Mesh criteria
 		Mesh_criteria criteria(facet_angle=my_facet_angle,
                                 facet_size=my_facet_size,
@@ -478,13 +522,6 @@ C3t3 create_mesh_no_refinement(Mesh_domain& domain,
                                 cell_size=my_general_cell_size);
 
 		// Meshing
-        // C3t3 mesh;
-		C3t3 mesh = CGAL::make_mesh_3<C3t3>(domain, criteria, no_lloyd(),
-                        no_odt(), perturb_setting, exude_setting);
-        return mesh;
-  //       CGAL::odt_optimize_mesh_3(c3t3, domain, time_limit=0);
-
-		// // Output
-		// std::ofstream medit_file(outfn.c_str());
-		// c3t3.output_to_medit(medit_file);
+		mesh = CGAL::make_mesh_3<C3t3>(domain, criteria, lloyd_options,
+                        odt_options, perturb_setting, exude_setting);
 }
