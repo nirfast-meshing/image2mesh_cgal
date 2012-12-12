@@ -15,7 +15,7 @@ createGUI();
         tabLayout.SelectedChild = 1;
         tabLayout.Padding = 5;
 
-        % Add Sub layouts
+        %% Add Sub layouts
         % Input files panel
         inputPanel = uiextras.Panel('Title','Input info','Parent',basicLayout);
         inputFilenamesLayout = uiextras.HBox('Parent', inputPanel);
@@ -88,7 +88,7 @@ createGUI();
         gui.RegionSizesEdit = uicontrol('Parent',meshSizeLayout,'Style','edit');
         set(meshSizeLayout, 'ColumnSizes', [-1 -1 -1], 'RowSizes', [20 35]);
 
-        %%
+        %% Output
         outputPanel = uiextras.Panel('Title','Output Settings','Parent', basicLayout,'Padding',5);
         outputLayout = uiextras.Grid('Parent',outputPanel, 'Spacing',5);
         gui.OutputFilenameText = uicontrol('Parent',outputLayout,'Style','text','HorizontalAlignment','center','String','Output file name:');
@@ -100,12 +100,13 @@ createGUI();
             'String',{'Standard','Fluorescence','Spectral','SPN'});
         uiextras.Empty('Parent',outputLayout);
         gui.RunMeshGenerator = uicontrol('Parent',outputLayout,'Style','pushbutton','String','Run Mesh Generator...');
-        set(outputLayout, 'ColumnSizes', [200 70 120 -1], 'RowSizes', [20 40]);
+        set(gui.RunMeshGenerator, 'Callback', @onRunMesherClicked);
+        set(outputLayout, 'ColumnSizes', [-1 70 120 -1], 'RowSizes', [20 40]);
 
         set(f,'Position', [440   122   649   460]);
         set(basicLayout, 'Sizes', [80 -1 80 80]);
     end
-%%
+
     function onBrowseInputImageClicked(~, ~)
         [fn, pathname] = uigetfile( ...
             {'*.bmp;*.jpg;*.tif;*.gif;*.mha;*.mhd','Image Files (*.bmp,*.jpg,*.tif,*.gif,*.mha,*.mhd)';'*.*','All Files (*.*)'}, ...
@@ -209,6 +210,173 @@ createGUI();
         set(gui.CellSizeEdit , 'String', num2str(2*minsize));
         data.cell_size = minsize;
     end
+    %% CGAL Mesher Caller
+    function onRunMesherClicked()
+        mainGUIhandle = nirfast;
+        mainGUIdata  = guidata(mainGUIhandle);
+        content = get(mainGUIdata.script,'String');
+        batch = get(mainGUIdata.batch_mode,'Value');
+        foo = sprintf('%s\n%s%s%s\n', ...
+            'gis_args.medfilter=1;', ...
+            '[mask param] = GetImageStack(''', data.infilename,...
+            ''',gis_args);');
+        if ~batch, eval(foo); end
+        content{end+1} = foo;
+
+        foo = sprintf('%s%s%s\n%s%s%s\n%s%s%s\n',...
+            'param.facet_angle = (',...
+            data.facet_angle, ');',...
+            'param.facet_distance = (',...
+            data.facet_distance, ');',...
+            'param.facet_size = (',...
+            data.facet_size, ');');
+        if ~batch, eval(foo); end
+        content{end+1} = foo;
+
+        foo = sprintf('%s\n%s\n%s%s%s\n%s%s%s\n%s%s%s\n%s%s%s\n',...
+            'param.medfilter = 0;',...
+            'param.pad = 0;',...
+            'param.cell_size = (',...
+            data.cell_size, ');',...
+            'param.cell_radius_edge = (',...
+            data.cell_radius_edge, ');',...
+            'param.special_subdomain_label = (',...
+            data.specialregion_label, ');',...
+            'param.special_subdomain_size  = (',... 
+            data.specialregion_size, 'String'), ');');
+        if ~batch, eval(foo); end
+        content{end+1} = foo;
+
+
+        foo = sprintf('%s%s%s\n%s%s%s\n%s%s%s\n',...
+            'sx=(', get(gui.XEdit,'String'), ');',...
+            'sy=(', get(gui.YEdit,'String'), ');',...
+            'sz=(', get(gui.ZEdit,'String'), ');');
+        if ~batch, eval(foo); end
+        content{end+1} = foo;
+        if ~batch
+            if isempty(sx) || isempty(sy) || isempty(sz) || ...
+                    isnan(sx) || isnan(sy) || isnan(sz)
+                errordlg('Pixel size information is invalid!');
+                error('Pixel size information is invalid!');
+            end
+        end
+
+        foo = sprintf('%s\n%s\n%s\n%s\n%s\n%s\n',...
+        'param.PixelDimensions(1) = sx;',...
+        'param.PixelDimensions(2) = sy;',...
+        'param.PixelDimensions(3) = sz;',...
+        'param.PixelSpacing(1) = sx;',...
+        'param.PixelSpacing(2) = sy;',...
+        'param.SliceThickness  = sz;');
+        if ~batch, eval(foo); end
+        content{end+1} = foo;
+        
+        foo = sprintf('%s%s%s\n%s\n%s, %s %s\n%s\n',...
+            'outfn = ''',  get(gui.OutputFilenameEdit,'String'),  ''';',...
+            'param.tmppath = fileparts(outfn);',...
+            'if isempty(param.tmppath)',...
+            'param.tmppath = getuserdir();',...
+            'end',...
+            'param.delmedit = 0;');
+        if ~batch, eval(foo); end
+        content{end+1} = foo;
+
+        % tmp1 = get(handles.statustext,'String');
+        tmp2 = get(handles.statustext,'ForegroundColor');
+        set(gui.StatusText,'String',{'Status:';'';'Creating Mesh';'Please wait...'});
+        set(gui.StatusText,'ForegroundColor',[1 0 0]);
+        drawnow
+
+        hf = waitbar(0,'Creating mesh, this may take several minutes.');
+        foo = '[e p] = RunCGALMeshGenerator(mask, param);';
+        if ~batch, eval(foo); end
+        content{end+1} = foo;
+
+        foo = sprintf('%s, %s; else, %s; end\n', ...
+            'if size(e,2) > 4', 'mat = e(:,5)', 'mat = ones(size(e,1),1)');
+        if ~batch, eval(foo); end
+        content{end+1} = foo;
+        
+        foo =sprintf('genmesh.ele = e;\ngenmesh.node = p;');
+        if ~batch, eval(foo); end
+        content{end+1} = foo;
+        
+        foo = sprintf('%s',...
+            'genmesh.ele(:,5) = mat; genmesh.nnpe = 4; genmesh.dim = 3;');
+        if ~batch, eval(foo); end
+        content{end+1} = foo;
+        
+        % call conversion to nirfast mesh
+        foo = sprintf('%s\n%s, %s %s, %s %s', ...
+            '[f1 f2] = fileparts(outfn);', ...
+            'if isempty(f1)', ...
+            'savefn_ = f2;', ...
+            'else', ...
+            'savefn_ = fullfile(f1,f2);', ...
+            'end');
+        eval(foo);
+
+        fprintf(' Writing to nirfast format...');
+        waitbar(0.7,hf,'Importing to nirfast');
+        foo = ['solidmesh2nirfast(genmesh,''' savefn_,...
+            '_nirfast_mesh'',''' data.meshtype ''');'];
+        if ~batch, eval(foo); end
+        content{end+1} = foo;
+
+        foo = sprintf('%s\n','fprintf(''done.\n'');');
+        if ~batch, eval(foo); end
+        content{end+1} = foo;
+
+        if ~batch
+            tmp1={};
+            tmp1{1} = 'Status';
+            tmp1{end+1}='';
+            tmp1{end+1} = sprintf('# of nodes: %d\n# of tets: %d\n',size(p,1),size(e,1));
+            set(gui.StatusText,'String',tmp1);
+            set(gui.StatusText,'ForegroundColor',tmp2);
+        end
+
+        foo = ['mesh = load_mesh(''' savefn_ '_nirfast_mesh'');'];
+        if ~batch, eval(foo); end
+        content{end+1} = foo;
+
+        tempvar = {'e', 'f1', 'f2', 'genmesh','info','mask','mat','e','p',...
+            'sx','sy','sz','cr1','cr2','genmesh','outfn','param'};
+        foo= 'clear';
+        for i_=1:length(tempvar)
+            foo = horzcat(foo,' ',tempvar{i_});
+        end
+        if ~batch, eval(foo); end
+        content{end+1} = foo;
+        
+        set(mainGUIdata.script, 'String', content);
+        guidata(nirfast, mainGUIdata);
+
+        waitbar(0.9,hf,'Loading mesh');
+        if ~batch
+            h=gui_place_sources_detectors('mesh',[savefn_ '_nirfast_mesh']);
+        end
+        close(hf);
+        if ~batch
+            data_sd=guidata(h);
+            if ~isempty(data.sdcoords)
+                set(data_sd.sources,  'String',cellstr(num2str(data.sdcoords,'%.8f %.8f %.8f')));
+                set(data_sd.detectors,'String',cellstr(num2str(data.sdcoords,'%.8f %.8f %.8f')));
+                axes(data_sd.mesh)
+                plot3(data.sdcoords(:,1),data.sdcoords(:,2),data.sdcoords(:,3),'ro');
+                plot3(data.sdcoords(:,1),data.sdcoords(:,2),data.sdcoords(:,3),'bx');
+            end
+        end
+
+        foo = sprintf('clear save_fn\n%%--------------------%%\n');
+        if ~batch, eval(foo); end
+        content{end+1} = foo;
+        
+        set(mainGUIdata.script, 'String', content);
+        guidata(nirfast, mainGUIdata);
+    end
+    %% SD Stuff
     function onBrowseSDButtonClicked(~, ~)
         [fn, pathname] = uigetfile( ...
             {'*.txt;*.csv','Text Files (*.txt,*.csv)';'*.*','All Files (*.*)'}, ...
