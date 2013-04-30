@@ -336,6 +336,7 @@ if ~isempty(info)
     end
     if isfield(info,'Offset')
         s{end+1} = sprintf('Offset: [%.2f %.2f %.2f]',info.Offset);
+        handles.offset = info.Offset;
     end
     set(handles.imageinfotxt,'String',s);
 end
@@ -515,102 +516,184 @@ set(handles.statustext,'ForegroundColor',[1 0 0]);
 drawnow
 
 hf = waitbar(0,'Creating mesh, this may take several minutes.');
-foo = '[e p] = RunCGALMeshGenerator(mask,param);';
-if ~batch, eval(foo); end
-content{end+1} = foo;
 
-foo = sprintf('%s, %s; else, %s; end\n', ...
-    'if size(e,2) > 4', 'mat = e(:,5)', 'mat = ones(size(e,1),1)');
-if ~batch, eval(foo); end
-content{end+1} = foo;
+if isfield(handles,'sdcoords') && ~isempty(handles.sdcoords)
+    sdcoords = handles.sdcoords;
+end
 
-% Ask if user wants to optimize quality
-[junk optimize_flag] = optimize_mesh_gui;
+% 3D
+if sum(size(mask)>1)>=3
 
-if optimize_flag
-    foo = 'q1 = simpqual(p, e, ''Min_Sin_Dihedral'');';
+    foo = '[e p] = RunCGALMeshGenerator(mask,param);';
     if ~batch, eval(foo); end
     content{end+1} = foo;
 
-    foo = ['[genmesh.ele genmesh.node mat] = ' ...
-        'call_improve_mesh_use_stellar(e, p);'];
+    foo = sprintf('%s, %s; else, %s; end\n', ...
+        'if size(e,2) > 4', 'mat = e(:,5)', 'mat = ones(size(e,1),1)');
     if ~batch, eval(foo); end
     content{end+1} = foo;
-    foo = 'q2 = simpqual(genmesh.node, genmesh.ele, ''Min_Sin_Dihedral'');';
+
+    % Ask if user wants to optimize quality
+    [junk optimize_flag] = optimize_mesh_gui;
+
+    if optimize_flag
+        foo = 'q1 = simpqual(p, e, ''Min_Sin_Dihedral'');';
+        if ~batch, eval(foo); end
+        content{end+1} = foo;
+
+        foo = ['[genmesh.ele genmesh.node mat] = ' ...
+            'call_improve_mesh_use_stellar(e, p);'];
+        if ~batch, eval(foo); end
+        content{end+1} = foo;
+        foo = 'q2 = simpqual(genmesh.node, genmesh.ele, ''Min_Sin_Dihedral'');';
+        if ~batch, eval(foo); end
+        content{end+1} = foo;
+    else
+        foo =sprintf('genmesh.ele = e;\ngenmesh.node = p;');
+        if ~batch, eval(foo); end
+        content{end+1} = foo;
+    end
+    foo = sprintf('%s',...
+        'genmesh.ele(:,5) = mat; genmesh.nnpe = 4; genmesh.dim = 3;');
     if ~batch, eval(foo); end
     content{end+1} = foo;
+
+    if optimize_flag
+        foo = sprintf(['\n%s\n%s\n%s\n%s\n%s\n%s\n'...
+            '%s\n%s\n%s\n%s\n%s\n%s\n%s'],...
+            'figure; subplot(1,2,1);','hist(q1,30);',...
+            'xlabel(''Min sin(dihedral angles)'')',...
+            'h = findobj(gca,''Type'',''patch'');',...
+            'set(h,''FaceColor'',''r'',''EdgeColor'',''w'');',...
+            'grid on; title(''Before Optimization'');',...
+            'cr1 = axis;', 'subplot(1,2,2); hist(q2,30); grid on',...
+            'cr2 = axis; axis([0 1 min(cr1(3),cr2(3)) max(cr1(4),cr2(4))]);',...
+            'h = findobj(gca,''Type'',''patch'');',...
+            'set(h,''FaceColor'',[0.33 0.5 0.17]);',...
+            'xlabel(''Min sin(dihedral angles)'')',...
+            'title(''After Optimization.''); subplot(1,2,1);',...
+            'axis([0 1 min(cr1(3),cr2(3)) max(cr1(4),cr2(4))]);');
+        if ~batch, eval(foo); end
+        content{end+1} = foo;
+    end
+
+    % call conversion to nirfast mesh
+    foo = sprintf('%s\n%s, %s %s, %s %s', ...
+        '[f1 f2] = fileparts(outfn);', ...
+        'if isempty(f1)', ...
+        'savefn_ = f2;', ...
+        'else', ...
+        'savefn_ = fullfile(f1,f2);', ...
+        'end');
+    eval(foo);
+
+    handles=guidata(hObject);
+    fprintf(' Writing to nirfast format...');
+    waitbar(0.7,hf,'Importing to nirfast');
+    foo = ['solidmesh2nirfast(genmesh,''' savefn_,...
+        '_nirfast_mesh'',''' handles.meshtype ''');'];
+    if ~batch, eval(foo); end
+    content{end+1} = foo;
+
+    foo = sprintf('%s\n','fprintf(''done.\n'');');
+    if ~batch, eval(foo); end
+    content{end+1} = foo;
+
+    if ~batch
+        tmp1={};
+        tmp1{1} = 'Status';
+        tmp1{end+1}='';
+        tmp1{end+1} = sprintf('# of nodes: %d\n# of tets: %d\n',size(p,1),size(e,1));
+        set(handles.statustext,'String',tmp1);
+        set(handles.statustext,'ForegroundColor',tmp2);
+    end
+
+    foo = ['mesh = load_mesh(''' savefn_ '_nirfast_mesh'');'];
+    if ~batch, eval(foo); end
+    content{end+1} = foo;
+
+    tempvar = {'e', 'f1', 'f2', 'genmesh','info','mask','mat','e','p',...
+        'sx','sy','sz','cr1','cr2','genmesh','outfn','param'};
+    foo= 'clear';
+    for i_=1:length(tempvar)
+        foo = horzcat(foo,' ',tempvar{i_});
+    end
+    if ~batch, eval(foo); end
+    content{end+1} = foo;
+
+% 2D
 else
-    foo =sprintf('genmesh.ele = e;\ngenmesh.node = p;');
-    if ~batch, eval(foo); end
-    content{end+1} = foo;
+    
+    % find singleton dimension for use in reordering fiducial coords
+    dim = [0 0 0];
+    dim(1) = str2num(get(handles.nrows,'String'));
+    dim(2) = str2num(get(handles.ncols,'String'));
+    dim(3) = str2num(get(handles.nslices,'String'));
+    sing_dim = find(dim==1);
+    
+    % reorder coords based on singleton dimension
+    if isfield(handles,'sdcoords') && ~isempty(handles.sdcoords)
+%         [sdcoords(:,sing_dim), sdcoords(:,3)] = ...
+%                 deal(sdcoords(:,3), sdcoords(:,sing_dim));
+        if sing_dim == 1
+            [sdcoords(:,1), sdcoords(:,2), sdcoords(:,3)] = ...
+                deal(sdcoords(:,2), sdcoords(:,3), sdcoords(:,1));
+        elseif sing_dim == 2
+            [sdcoords(:,1), sdcoords(:,2), sdcoords(:,3)] = ...
+                deal(sdcoords(:,1), sdcoords(:,3), sdcoords(:,2));
+        end
+    end
+    if size(size(mask),2) == 3
+%         [mask(:,sing_dim), mask(:,3)] = ...
+%                     deal(mask(:,3), mask(:,sing_dim));
+        if sing_dim == 1
+            [mask(:,1), mask(:,2), mask(:,3)] = ...
+                deal(mask(:,2), mask(:,3), mask(:,1));
+        elseif sing_dim == 2
+            [mask(:,1), mask(:,2), mask(:,3)] = ...
+                deal(mask(:,1), mask(:,3), mask(:,2));
+        end
+        % collapse the singleton dimension of mask
+        mask=squeeze(mask);
+    end
+    offset = handles.offset;
+%     [offset(sing_dim), offset(3)] = deal(offset(3), offset(sing_dim));
+    if sing_dim == 1
+        [offset(:,1), offset(:,2), offset(:,3)] = ...
+            deal(offset(:,2), offset(:,3), offset(:,1));
+    elseif sing_dim == 2
+        [offset(:,1), offset(:,2), offset(:,3)] = ...
+            deal(offset(:,1), offset(:,3), offset(:,2));
+    end
+    
+    foo = sprintf('%s\n%s, %s %s, %s %s', ...
+        '[f1 f2] = fileparts(outfn);', ...
+        'if isempty(f1)', ...
+        'savefn_ = f2;', ...
+        'else', ...
+        'savefn_ = fullfile(f1,f2);', ...
+        'end');
+    eval(foo);
+    
+    if sing_dim == 1
+        pix_dim = 'sy sz';
+    elseif sing_dim == 2
+        pix_dim = 'sx sz';
+    elseif sing_dim == 3
+        pix_dim = 'sx sy';
+    end
+
+    %content{end+1} = strcat('mask2mesh_2D(flipdim(rot90(mask.'',2),2),[',pix_dim,'],',...
+    content{end+1} = strcat('mask2mesh_2D(rot90(mask,1),[',pix_dim,'],',...
+        get(handles.cell_size,'String'),...
+        ',',num2str((str2num(get(handles.cell_size,'String'))^2)/2),...
+        ',''',[savefn_ '_nirfast_mesh'],...
+        ''',''',handles.meshtype,''',[',num2str(offset),']);');
+    if ~batch
+        eval(content{end});
+    end
+    
 end
-foo = sprintf('%s',...
-    'genmesh.ele(:,5) = mat; genmesh.nnpe = 4; genmesh.dim = 3;');
-if ~batch, eval(foo); end
-content{end+1} = foo;
-
-if optimize_flag
-    foo = sprintf(['\n%s\n%s\n%s\n%s\n%s\n%s\n'...
-        '%s\n%s\n%s\n%s\n%s\n%s\n%s'],...
-        'figure; subplot(1,2,1);','hist(q1,30);',...
-        'xlabel(''Min sin(dihedral angles)'')',...
-        'h = findobj(gca,''Type'',''patch'');',...
-        'set(h,''FaceColor'',''r'',''EdgeColor'',''w'');',...
-        'grid on; title(''Before Optimization'');',...
-        'cr1 = axis;', 'subplot(1,2,2); hist(q2,30); grid on',...
-        'cr2 = axis; axis([0 1 min(cr1(3),cr2(3)) max(cr1(4),cr2(4))]);',...
-        'h = findobj(gca,''Type'',''patch'');',...
-        'set(h,''FaceColor'',[0.33 0.5 0.17]);',...
-        'xlabel(''Min sin(dihedral angles)'')',...
-        'title(''After Optimization.''); subplot(1,2,1);',...
-        'axis([0 1 min(cr1(3),cr2(3)) max(cr1(4),cr2(4))]);');
-    if ~batch, eval(foo); end
-    content{end+1} = foo;
-end
-
-% call conversion to nirfast mesh
-foo = sprintf('%s\n%s, %s %s, %s %s', ...
-    '[f1 f2] = fileparts(outfn);', ...
-    'if isempty(f1)', ...
-    'savefn_ = f2;', ...
-    'else', ...
-    'savefn_ = fullfile(f1,f2);', ...
-    'end');
-eval(foo);
-
-handles=guidata(hObject);
-fprintf(' Writing to nirfast format...');
-waitbar(0.7,hf,'Importing to nirfast');
-foo = ['solidmesh2nirfast(genmesh,''' savefn_,...
-    '_nirfast_mesh'',''' handles.meshtype ''');'];
-if ~batch, eval(foo); end
-content{end+1} = foo;
-
-foo = sprintf('%s\n','fprintf(''done.\n'');');
-if ~batch, eval(foo); end
-content{end+1} = foo;
-
-if ~batch
-    tmp1={};
-    tmp1{1} = 'Status';
-    tmp1{end+1}='';
-    tmp1{end+1} = sprintf('# of nodes: %d\n# of tets: %d\n',size(p,1),size(e,1));
-    set(handles.statustext,'String',tmp1);
-    set(handles.statustext,'ForegroundColor',tmp2);
-end
-
-foo = ['mesh = load_mesh(''' savefn_ '_nirfast_mesh'');'];
-if ~batch, eval(foo); end
-content{end+1} = foo;
-
-tempvar = {'e', 'f1', 'f2', 'genmesh','info','mask','mat','e','p',...
-    'sx','sy','sz','cr1','cr2','genmesh','outfn','param'};
-foo= 'clear';
-for i_=1:length(tempvar)
-    foo = horzcat(foo,' ',tempvar{i_});
-end
-if ~batch, eval(foo); end
-content{end+1} = foo;
 
 set(mainGUIdata.script, 'String', content);
 guidata(nirfast, mainGUIdata);
@@ -624,11 +707,19 @@ if ~batch
     data=guidata(h);
     if ~isempty(handles.sdcoords)
         guidata(hObject,handles);
-        set(data.sources,  'String',cellstr(num2str(handles.sdcoords,'%.8f %.8f %.8f')));
-        set(data.detectors,'String',cellstr(num2str(handles.sdcoords,'%.8f %.8f %.8f')));
-        axes(data.mesh)
-        plot3(handles.sdcoords(:,1),handles.sdcoords(:,2),handles.sdcoords(:,3),'ro');
-        plot3(handles.sdcoords(:,1),handles.sdcoords(:,2),handles.sdcoords(:,3),'bx');
+        if exist('sing_dim','var')
+            set(data.sources,  'String',cellstr(num2str(sdcoords(:,1:2),'%.8f %.8f')));
+            set(data.detectors,'String',cellstr(num2str(sdcoords(:,1:2),'%.8f %.8f')));
+            axes(data.mesh)
+            plot(sdcoords(:,1),sdcoords(:,2),'ro');
+            plot(sdcoords(:,1),sdcoords(:,2),'bx');
+        else
+            set(data.sources,  'String',cellstr(num2str(sdcoords,'%.8f %.8f %.8f')));
+            set(data.detectors,'String',cellstr(num2str(sdcoords,'%.8f %.8f %.8f')));
+            axes(data.mesh)
+            plot3(sdcoords(:,1),sdcoords(:,2),sdcoords(:,3),'ro');
+            plot3(sdcoords(:,1),sdcoords(:,2),sdcoords(:,3),'bx');
+        end
     end
 end
 
