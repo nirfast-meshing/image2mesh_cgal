@@ -284,11 +284,15 @@ handles = guidata(hObject);
 UpdateOutputFn(hObject,eventdata,handles);
 if flag
     [f1 f2 f3] = fileparts(get(handles.infilename,'String'));
+    fids = dir([f1 'Fiducials_*']);
     if exist(fullfile(f1,[f2 '.txt']),'file')
         set(handles.sdfilename,'String',fullfile(f1,[f2 '.txt']));
         UpdateSDFileInfo(hObject,eventdata,handles);
     elseif exist(fullfile(f1,[f2 '.csv']),'file')
         set(handles.sdfilename,'String',fullfile(f1,[f2 '.csv']));
+        UpdateSDFileInfo(hObject,eventdata,handles);
+    elseif size(fids)>0
+        set(handles.sdfilename,'String',[f1 fids(1).name]);
         UpdateSDFileInfo(hObject,eventdata,handles);
     else
         set(handles.sdfilename,'String','Could not find S/D file!');
@@ -916,9 +920,15 @@ end
 
 function UpdateSDFileInfo(hObject,eventdata,handles)
 set(handles.sdfilename,'ForegroundColor',[0 0 0]);
-fid=fopen(get(handles.sdfilename,'String'),'rt');
-s=textscan(fid,'%f,%f,%f,%f');
-handles.sdcoords = [s{2} s{3} s{4}];
+sdfname = get(handles.sdfilename,'String');
+if strcmp(sdfname(end-2:end),'csv')
+    s = importdata(sdfname);
+    handles.sdcoords = [s.data(:,2) s.data(:,3) s.data(:,4)];
+else
+    fid=fopen(get(handles.sdfilename,'String'),'rt');
+    s=textscan(fid,'%f,%f,%f,%f');
+    handles.sdcoords = [s{2} s{3} s{4}];
+end
 s = get(handles.imageinfotxt,'String');
 s{end+1}='';
 s{end+1} = sprintf('Number of source/detectors: %d',size(handles.sdcoords,1));
