@@ -536,15 +536,21 @@ if sum(size(mask)>1)>=3
         'if size(e,2) > 4', 'mat = e(:,5)', 'mat = ones(size(e,1),1)');
     if ~batch, eval(foo); end
     content{end+1} = foo;
+    
+    % find quality
+    foo = 'q1 = simpqual(p, e, ''Min_Sin_Dihedral'');';
+    if ~batch, eval(foo); end
+    content{end+1} = foo;
 
     % Ask if user wants to optimize quality
-    [junk optimize_flag] = optimize_mesh_gui;
+    if (min(q1)<0.06)
+        [junk optimize_flag] = optimize_mesh_gui('flag',1);
+    else
+        [junk optimize_flag] = optimize_mesh_gui('flag',0);
+    end
+    
 
     if optimize_flag
-        foo = 'q1 = simpqual(p, e, ''Min_Sin_Dihedral'');';
-        if ~batch, eval(foo); end
-        content{end+1} = foo;
-
         foo = ['[genmesh.ele genmesh.node mat] = ' ...
             'call_improve_mesh_use_stellar(e, p);'];
         if ~batch, eval(foo); end
