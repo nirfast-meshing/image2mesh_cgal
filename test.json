@@ -1,9 +1,9 @@
 //Configuration options
 {
     // Input file name which should be in INR file foramt
-    "inrfilename": "cgal_mesher.inr",
+    "inrfilename": "._cgal_mesher.inr",
     // Output file name to store mesh in MEDIT format
-    "outfilename": "out.mesh",
+    "outfilename": "._out.mesh",
     // Setting for surface (boundary) of the mesh
     "facet_settings": {
         "size": 2.0,
